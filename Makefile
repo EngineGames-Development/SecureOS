@@ -14,7 +14,7 @@ LDFLAGS         = -nostdlib -znocombreloc -T $(EFI_LDS) -shared \
 KERNEL_SOURCES  = $(wildcard kernel/*.c) $(wildcard kernel/**/*.c)
 KERNEL_OBJS     = $(KERNEL_SOURCES:.c=.o)
 
-all: secureos.img
+all: secureos.iso
 
 boot/efi/main.o: boot/efi/main.c
 	gcc $(CFLAGS) -c $< -o $@
@@ -36,8 +36,14 @@ secureos.img: sysroot/EFI/BOOT/BOOTX64.EFI
 	mmd -i $@ ::/EFI/BOOT
 	mcopy -i $@ sysroot/EFI/BOOT/BOOTX64.EFI ::/EFI/BOOT/BOOTX64.EFI
 
+secureos.iso: secureos.img
+	mkdir -p iso_root
+	xorriso -as mkisofs -R -f -e secureos.img -no-emul-boot -o $@ iso_root
+	rm -rf iso_root
+
 clean:
-	rm -f boot/efi/*.o kernel/*.o kernel/lib/*.o sysroot/EFI/BOOT/BOOTX64.EFI secureos.img
+	rm -f boot/efi/*.o kernel/*.o kernel/lib/*.o sysroot/EFI/BOOT/BOOTX64.EFI secureos.img secureos.iso
+	rm -rf iso_root
 
 run: all
-	qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd -net none -drive file=secureos.img,format=raw -no-reboot
+	qemu-system-x86_64 -bios secure_bios.fd -net none -drive file=secureos.img,format=raw -no-reboot
