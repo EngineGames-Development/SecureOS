@@ -1,29 +1,43 @@
-CC = gcc
-AS = nasm
-LD = ld
+ARCH            = x86_64
+EFIINC          = /usr/include/efi
+EFIINCS         = -I$(EFIINC) -I$(EFIINC)/$(ARCH) -I$(EFIINC)/protocol -Ikernel
+EFILIB          = /usr/lib
+EFI_CRT_OBJS    = $(EFILIB)/crt0-efi-$(ARCH).o
+EFI_LDS         = $(EFILIB)/elf_$(ARCH)_efi.lds
 
-CFLAGS = -m32 -Wall -Wextra -ffreestanding -O2 -nostdlib -nostdinc -fno-builtin -fno-pie -fno-pic -mno-red-zone -mno-80387 -mno-mmx -mno-sse -mno-sse2 -Ikernel
-LDFLAGS = -m elf_i386 -no-pie -T boot/linker.ld
+CFLAGS          = -fno-stack-protector -fpic -fshort-wchar -mno-red-zone \
+                  -Wall -Wextra -DEFI_FUNCTION_WRAPPER $(EFIINCS) -O2
 
-KERNEL_SOURCES = $(wildcard kernel/*.c) $(wildcard kernel/**/*.c)
-KERNEL_OBJS = boot/boot.o $(KERNEL_SOURCES:.c=.o)
+LDFLAGS         = -nostdlib -znocombreloc -T $(EFI_LDS) -shared \
+                  -Bsymbolic $(EFI_CRT_OBJS) -L$(EFILIB) -lefi -lgnuefi
 
-all: sysroot/boot/kernel.bin
+KERNEL_SOURCES  = $(wildcard kernel/*.c) $(wildcard kernel/**/*.c)
+KERNEL_OBJS     = $(KERNEL_SOURCES:.c=.o)
 
-boot/boot.o: boot/boot.asm
-	$(AS) -f elf32 $< -o $@
+all: secureos.img
+
+boot/efi/main.o: boot/efi/main.c
+	gcc $(CFLAGS) -c $< -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	gcc $(CFLAGS) -c $< -o $@
 
-sysroot/boot/kernel.bin: $(KERNEL_OBJS)
-	mkdir -p sysroot/boot
-	$(LD) $(LDFLAGS) $(KERNEL_OBJS) -o $@
+sysroot/EFI/BOOT/BOOTX64.EFI: boot/efi/main.o $(KERNEL_OBJS)
+	mkdir -p sysroot/EFI/BOOT
+	ld boot/efi/main.o $(KERNEL_OBJS) $(LDFLAGS) -o boot/efi/main.so
+	objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym  -j .rel \
+		-j .rela -j .reloc --target=efi-app-$(ARCH) boot/efi/main.so $@
+	rm boot/efi/main.so
+
+secureos.img: sysroot/EFI/BOOT/BOOTX64.EFI
+	dd if=/dev/zero of=$@ bs=1M count=48
+	mkfs.vfat -F 32 $@
+	mmd -i $@ ::/EFI
+	mmd -i $@ ::/EFI/BOOT
+	mcopy -i $@ sysroot/EFI/BOOT/BOOTX64.EFI ::/EFI/BOOT/BOOTX64.EFI
 
 clean:
-	rm -f boot/*.o
-	find kernel -name "*.o" -type f -delete
-	rm -f sysroot/boot/kernel.bin
+	rm -f boot/efi/*.o kernel/*.o kernel/lib/*.o sysroot/EFI/BOOT/BOOTX64.EFI secureos.img
 
 run: all
-	qemu-system-i386 -M q35 -kernel sysroot/boot/kernel.bin -no-reboot
+	qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd -net none -drive file=secureos.img,format=raw -no-reboot
