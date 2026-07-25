@@ -2,6 +2,7 @@
 #include "include/gdt.h"
 #include "include/interrupts.h"
 #include "include/io.h"
+#include "include/memory.h"
 #include "include/string.h"
 #include "include/timer.h"
 
@@ -124,6 +125,7 @@ void kernel_main(void) {
 
   print_string("SecureOS Terminal v0.5 (True Event-Driven via IDT)\n");
   print_string("Gib 'help' oder 'clear' ein.\n\n> ");
+  init_memory();
   init_gdt();
   init_interrupts();
   init_timer(100);

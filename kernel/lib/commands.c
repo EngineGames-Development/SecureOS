@@ -1,5 +1,6 @@
 #include "include/io.h"
 #include "include/kernel.h"
+#include "include/memory.h"
 #include "include/string.h"
 
 extern char input_buffer[];
@@ -14,8 +15,24 @@ void process_command() {
     print_string("Befehle:\n");
     print_string(" - help     : Zeigt diese Hilfe\n");
     print_string(" - clear    : Leert den Bildschirm\n");
+    print_string(" - malloc   : Testet den RAM\n");
     print_string(" - shutdown : Schaltet das OS und QEMU aus\n");
     print_string(" - panic    : Provoziert einen CPU-Absturz\n");
+  } else if (strcmp(input_buffer, "malloc") == 0) {
+    print_string("1. Fordere 64 Bytes an...\n");
+    void *ptr1 = kmalloc(64);
+
+    print_string("2. Gebe Speicher direkt wieder frei...\n");
+    kfree(ptr1);
+
+    print_string("3. Fordere erneut 64 Bytes an...\n");
+    void *ptr2 = kmalloc(64);
+
+    if (ptr1 == ptr2 && ptr1 != 0) {
+      print_string("Erfolg! RAM wurde perfekt recycelt.\n");
+    } else {
+      print_string("Fehler im Speicher-Recycling!\n");
+    }
   } else if (strcmp(input_buffer, "shutdown") == 0) {
     print_string("Fahre SecureOS herunter...\n");
     sleep_ms(3000);
