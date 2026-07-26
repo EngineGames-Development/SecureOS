@@ -46,11 +46,8 @@ void draw_desktop_and_taskbar(void) {
   unsigned int button_y = taskbar_y + ((taskbar_height - button_height) / 2);
   draw_rect(button_x, button_y, button_width, button_height, 0x00005B9E);
 
-  // --- NEU: HIER SCHREIBEN WIR DIE PIXEL-SCHRIFT AUF DIE OBERFLÄCHE ---
-  draw_string(button_x + 10, button_y + 6, "START",
-              0x00FFFFFF); // Weißer Text auf dem Button
-  draw_string(20, 20, "SECUREOS NEXT GEN",
-              0x00005B9E); // System-Label oben links
+  draw_string(button_x + 10, button_y + 6, "START", 0x00FFFFFF);
+  draw_string(20, 20, "SECUREOS NEXT GEN", 0x00005B9E);
 }
 
 void start_graphics_terminal(EFI_SYSTEM_TABLE *SystemTable,
