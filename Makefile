@@ -46,4 +46,4 @@ clean:
 	rm -rf iso_root
 
 run: all
-	qemu-system-x86_64 -bios secure_bios.fd -net none -drive file=secureos.img,format=raw -no-reboot
+	qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd -net none -drive file=secureos.img,format=raw -no-reboot
