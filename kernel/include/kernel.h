@@ -1,17 +1,15 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
+void draw_pixel(unsigned int x, unsigned int y, unsigned int color);
+void draw_rect(unsigned int start_x, unsigned int start_y, unsigned int width,
+               unsigned int height, unsigned int color);
 void clear_screen(void);
-void print_string(const char *str);
 void print_char(char c);
+void print_string(const char *str);
 void sleep_ms(int milliseconds);
-void update_hardware_cursor(void);
-void process_command(void);
 
 extern char input_buffer[];
 extern int input_length;
-extern int cursor_x;
-extern int cursor_y;
-extern volatile unsigned short *video_memory;
 
 #endif

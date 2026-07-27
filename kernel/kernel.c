@@ -1,16 +1,27 @@
+#include "include/kernel.h"
 #include "include/font.h"
-#include <efi.h>
-#include <efilib.h>
+
+#define NULL ((void *)0)
 
 unsigned int *framebuffer = NULL;
-unsigned int screen_width = 0;
-unsigned int screen_height = 0;
+unsigned int screen_width = 1024;
+unsigned int screen_height = 768;
+
+int cursor_x = 20;
+int cursor_y = 60;
 
 char input_buffer[64];
 int input_length = 0;
 
 extern int strcmp(const char *str1, const char *str2);
 extern void process_command(void);
+
+unsigned char keyboard_map[128] = {
+    0,   27,  '1',  '2',  '3',  '4', '5', '6',  '7', '8', '9', '0',
+    '-', '=', '\b', '\t', 'q',  'w', 'e', 'r',  't', 'y', 'u', 'i',
+    'o', 'p', '[',  ']',  '\n', 0,   'a', 's',  'd', 'f', 'g', 'h',
+    'j', 'k', 'l',  ';',  '\'', '`', 0,   '\\', 'z', 'x', 'c', 'v',
+    'b', 'n', 'm',  ',',  '.',  '/', 0,   '*',  0,   ' '};
 
 void draw_pixel(unsigned int x, unsigned int y, unsigned int color) {
   if (x >= screen_width || y >= screen_height || framebuffer == NULL)
@@ -35,7 +46,6 @@ void clear_screen_gui(unsigned int color) {
 
 void draw_desktop_and_taskbar(void) {
   clear_screen_gui(0x001A1A24);
-
   unsigned int taskbar_height = 40;
   unsigned int taskbar_y = screen_height - taskbar_height;
   draw_rect(0, taskbar_y, screen_width, taskbar_height, 0x00101014);
@@ -50,36 +60,83 @@ void draw_desktop_and_taskbar(void) {
   draw_string(20, 20, "SECUREOS NEXT GEN", 0x00005B9E);
 }
 
-void start_graphics_terminal(EFI_SYSTEM_TABLE *SystemTable,
-                             unsigned int *fb_addr, unsigned int width,
-                             unsigned int height) {
-  ST = SystemTable;
-  framebuffer = (unsigned int *)fb_addr;
-  screen_width = width;
-  screen_height = height;
+void clear_screen(void) {
+  draw_desktop_and_taskbar();
+  cursor_x = 20;
+  cursor_y = 60;
+}
+
+void print_char(char c) {
+  if (c == '\n') {
+    cursor_x = 20;
+    cursor_y += 16;
+    return;
+  }
+  if (c == '\b') {
+    if (cursor_x > 20) {
+      cursor_x -= 8;
+      draw_rect(cursor_x, cursor_y, 8, 16, 0x001A1A24);
+    }
+    return;
+  }
+  draw_char(cursor_x, cursor_y, c, 0x00FFFFFF);
+  cursor_x += 8;
+  if (cursor_x >= (int)screen_width - 20) {
+    cursor_x = 20;
+    cursor_y += 16;
+  }
+}
+
+void print_string(const char *str) {
+  for (int i = 0; str[i] != '\0'; i++) {
+    print_char(str[i]);
+  }
+}
+
+void sleep_ms(int milliseconds) {
+  for (int m = 0; m < milliseconds; m++) {
+    for (int u = 0; u < 1000; u++) {
+      asm volatile("outb %%al, $0x80" ::: "ax");
+    }
+  }
+}
+
+void start_graphics_terminal(unsigned int *multiboot_info) {
+  (void)multiboot_info;
+  framebuffer = (unsigned int *)0xFD000000;
+  screen_width = 1024;
+  screen_height = 768;
 
   draw_desktop_and_taskbar();
 
-  EFI_INPUT_KEY Key;
+  print_string("Terminal geladen.\n> ");
+
   while (1) {
-    EFI_STATUS status =
-        uefi_call_wrapper(ST->ConIn->ReadKeyStroke, 2, ST->ConIn, &Key);
-    if (status == EFI_SUCCESS) {
-      if (Key.ScanCode == 0) {
-        char c = (char)Key.UnicodeChar;
-        if (c == '\r' || c == '\n') {
-          input_buffer[input_length] = '\0';
-          process_command();
-        } else if (c == '\b') {
-          if (input_length > 0) {
-            input_length--;
+    unsigned char status = 0;
+    asm volatile("inb $0x64, %0" : "=a"(status));
+    if (status & 1) {
+      unsigned char scancode = 0;
+      asm volatile("inb $0x60, %0" : "=a"(scancode));
+      if (!(scancode & 0x80)) {
+        char c = keyboard_map[scancode];
+        if (c != 0) {
+          if (c == '\n') {
             input_buffer[input_length] = '\0';
+            process_command();
+          } else if (c == '\b') {
+            if (input_length > 0) {
+              input_length--;
+              input_buffer[input_length] = '\0';
+              print_char('\b');
+            }
+          } else if (input_length < 63) {
+            print_char(c);
+            input_buffer[input_length] = c;
+            input_length++;
           }
-        } else if (input_length < 63) {
-          input_buffer[input_length] = c;
-          input_length++;
         }
       }
     }
+    asm volatile("hlt");
   }
 }
