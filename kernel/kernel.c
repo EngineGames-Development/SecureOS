@@ -46,7 +46,7 @@ unsigned char keyboard_map[128] = {
     '-', '=', '\b', '\t', 'q',  'w', 'e', 'r',  't', 'y', 'u', 'i',
     'o', 'p', '[',  ']',  '\n', 0,   'a', 's',  'd', 'f', 'g', 'h',
     'j', 'k', 'l',  ';',  '\'', '`', 0,   '\\', 'z', 'x', 'c', 'v',
-    'b', 'n', 'm',  ',',  '.',  '/', 0,   '*',  0,   ' '};
+    'b', 'n', 'm',  ',',  '.',  '/', 0,   '*',  0,   ' ', 0xA9};
 
 void draw_pixel(unsigned int x, unsigned int y, unsigned int color) {
   if (x >= screen_width || y >= screen_height || framebuffer == NULL)

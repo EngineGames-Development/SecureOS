@@ -13,12 +13,18 @@ void process_command() {
   } else if (strcmp(input_buffer, "help") == 0) {
     print_string("Commands:\n");
     print_string(" - help     : Show this help menu\n");
+    print_string(" - about    : Shows the about\n");
     print_string(" - clear    : Clear the terminal window\n");
     print_string(" - malloc   : Test dynamic kernel allocation\n");
     print_string(" - crash    : Provoke a real hardware division-by-zero\n");
     print_string(" - panic    : Trigger a direct manual panic\n");
     print_string(" - shutdown : Turn off the OS and QEMU\n");
-  } else if (strcmp(input_buffer, "malloc") == 0) {
+  } else if (strcmp(input_buffer, "about") == 0) {
+    print_string("This project is licensed under the MIT License\nCopyright © "
+                 "2026 EngineGames-Development.\n");
+  }
+
+  else if (strcmp(input_buffer, "malloc") == 0) {
     void *ptr = kmalloc(1024);
     if (ptr != 0) {
       print_string("Memory successfully allocated at heap!\n");
