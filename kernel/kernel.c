@@ -1,5 +1,6 @@
 #include "include/kernel.h"
 #include "include/font.h"
+#include "include/memory.h"
 
 #define NULL ((void *)0)
 #define TERM_ROWS 21
@@ -23,6 +24,22 @@ int input_length = 0;
 
 extern int strcmp(const char *str1, const char *str2);
 extern void process_command(void);
+
+struct idt_entry {
+  unsigned short low_offset;
+  unsigned short selector;
+  unsigned char zero;
+  unsigned char flags;
+  unsigned short high_offset;
+} __attribute__((packed));
+
+struct idt_ptr {
+  unsigned short limit;
+  unsigned int base;
+} __attribute__((packed));
+
+struct idt_entry idt[32];
+struct idt_ptr idtp;
 
 unsigned char keyboard_map[128] = {
     0,   27,  '1',  '2',  '3',  '4', '5', '6',  '7', '8', '9', '0',
@@ -157,6 +174,7 @@ void sleep_ms(int milliseconds) {
 }
 
 void trigger_kernel_panic_gui(const char *error_msg) {
+  asm volatile("cli");
   clear_screen_gui(0x00AA0000);
   draw_rect(50, 50, screen_width - 100, 40, 0x001A1A24);
   draw_string(70, 62, "!!! KERNEL PANIC !!!", 0x00FF0000);
@@ -170,11 +188,31 @@ void trigger_kernel_panic_gui(const char *error_msg) {
   }
 }
 
+void exception_divide_by_zero(void) {
+  trigger_kernel_panic_gui("DIVISION_BY_ZERO_EXCEPTION");
+}
+
+void init_idt(void) {
+  unsigned int base = (unsigned int)exception_divide_by_zero;
+  idt[0].low_offset = base & 0xFFFF;
+  idt[0].selector = 0x08;
+  idt[0].zero = 0;
+  idt[0].flags = 0x8E;
+  idt[0].high_offset = (base >> 16) & 0xFFFF;
+
+  idtp.limit = (sizeof(struct idt_entry) * 32) - 1;
+  idtp.base = (unsigned int)&idt;
+  asm volatile("lidt (%0)" : : "r"(&idtp));
+}
+
 void start_graphics_terminal(unsigned int *multiboot_info) {
   (void)multiboot_info;
   framebuffer = (unsigned int *)0xFD000000;
   screen_width = 1024;
   screen_height = 768;
+
+  init_idt();
+  init_memory();
 
   unsigned char dummy = 0;
   while (1) {

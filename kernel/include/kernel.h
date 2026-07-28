@@ -8,6 +8,7 @@ void clear_screen(void);
 void print_char(char c);
 void print_string(const char *str);
 void sleep_ms(int milliseconds);
+void trigger_kernel_panic_gui(const char *error_msg);
 
 extern char input_buffer[];
 extern int input_length;
