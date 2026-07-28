@@ -3,7 +3,7 @@
 
 extern char input_buffer[];
 extern int input_length;
-extern void clear_screen_gui(unsigned int color);
+extern void trigger_kernel_panic_gui(const char *error_msg);
 
 void process_command() {
   print_string("\n");
@@ -11,13 +11,13 @@ void process_command() {
   if (strcmp(input_buffer, "clear") == 0) {
     clear_screen();
   } else if (strcmp(input_buffer, "help") == 0) {
-    print_string("Befehle:\n");
-    print_string(" - help     : Zeigt diese Hilfe\n");
-    print_string(" - clear    : Leert den Bildschirm\n");
-    print_string(" - panic    : Provoziert CPU-Absturz\n");
-    print_string(" - shutdown : Schaltet das OS aus\n");
+    print_string("Commands:\n");
+    print_string(" - help     : Show this help menu\n");
+    print_string(" - clear    : Clear the terminal window\n");
+    print_string(" - panic    : Provoke a system crash\n");
+    print_string(" - shutdown : Turn off the OS and QEMU\n");
   } else if (strcmp(input_buffer, "shutdown") == 0) {
-    print_string("Fahre SecureOS herunter...\n");
+    print_string("Shutting down SecureOS...\n");
     sleep_ms(500);
     asm volatile("outw %0, %1"
                  :
@@ -26,12 +26,9 @@ void process_command() {
                  :
                  : "a"((unsigned short)0x2000), "Nd"((unsigned short)0xB004));
   } else if (strcmp(input_buffer, "panic") == 0) {
-    clear_screen_gui(0x00AA0000);
-    while (1) {
-      asm volatile("hlt");
-    }
+    trigger_kernel_panic_gui("USER-TRIGGERED PANIC COMMAND");
   } else if (input_length > 0) {
-    print_string("Befehl nicht gefunden: ");
+    print_string("Command not found: ");
     print_string(input_buffer);
     print_string("\n");
   }
