@@ -175,8 +175,22 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
   framebuffer = (unsigned int *)0xFD000000;
   screen_width = 1024;
   screen_height = 768;
+
+  unsigned char dummy = 0;
+  while (1) {
+    unsigned char status = 0;
+    asm volatile("inb $0x64, %0" : "=a"(status));
+    if (status & 1) {
+      asm volatile("inb $0x60, %0" : "=a"(dummy));
+    } else {
+      break;
+    }
+  }
+  (void)dummy;
+
   clear_screen();
   print_string("SECUREOS READY.\n> ");
+
   while (1) {
     unsigned char status = 0;
     asm volatile("inb $0x64, %0" : "=a"(status));
@@ -203,6 +217,5 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
         }
       }
     }
-    asm volatile("hlt");
   }
 }
