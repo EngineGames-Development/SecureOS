@@ -2,8 +2,7 @@
 #include "include/font.h"
 #include "include/memory.h"
 
-extern unsigned char logo_bmp[];
-extern unsigned int logo_bmp_len;
+extern unsigned char logo_data[];
 
 #define NULL ((void *)0)
 #define TERM_ROWS 21
@@ -27,7 +26,7 @@ int input_length = 0;
 
 int system_seconds = 0;
 int system_minutes = 0;
-int loop_counter = 0;
+unsigned char last_known_second = 0xFF;
 
 extern int strcmp(const char *str1, const char *str2);
 extern void process_command(void);
@@ -276,29 +275,19 @@ void draw_status_bar(void) {
     local_hour -= 24;
   }
 
-  draw_rect(screen_width - 210, 16, 200, 20, 0x001A1A24);
+  last_known_second = sec;
 
+  draw_rect(screen_width - 210, 16, 200, 20, 0x001A1A24);
   int start_x = screen_width - 150;
 
-  int h_tens = local_hour / 10;
-  int h_ones = local_hour % 10;
-  draw_char(start_x, 18, h_tens + '0', 0x00FFFFFF);
-  draw_char(start_x + 8, 18, h_ones + '0', 0x00FFFFFF);
-
+  draw_char(start_x, 18, (local_hour / 10) + '0', 0x00FFFFFF);
+  draw_char(start_x + 8, 18, (local_hour % 10) + '0', 0x00FFFFFF);
   draw_char(start_x + 16, 18, ':', 0x00FFFFFF);
-
-  int m_tens = (int)min / 10;
-  int m_ones = (int)min % 10;
-  draw_char(start_x + 24, 18, m_tens + '0', 0x00FFFFFF);
-  draw_char(start_x + 32, 18, m_ones + '0', 0x00FFFFFF);
-
+  draw_char(start_x + 24, 18, ((int)min / 10) + '0', 0x00FFFFFF);
+  draw_char(start_x + 32, 18, ((int)min % 10) + '0', 0x00FFFFFF);
   draw_char(start_x + 40, 18, ':', 0x00FFFFFF);
-
-  int s_tens = (int)sec / 10;
-  int s_ones = (int)sec % 10;
-  draw_char(start_x + 48, 18, s_tens + '0', 0x00FFFFFF);
-  draw_char(start_x + 56, 18, s_ones + '0', 0x00FFFFFF);
-
+  draw_char(start_x + 48, 18, ((int)sec / 10) + '0', 0x00FFFFFF);
+  draw_char(start_x + 56, 18, ((int)sec % 10) + '0', 0x00FFFFFF);
   draw_string(start_x + 70, 18, "CEST", 0x00005B9E);
 }
 
@@ -321,32 +310,30 @@ void draw_bootscreen_animation(void) {
   int img_w = 64;
   int img_h = 64;
   int start_x = center_x - (img_w / 2);
-  int start_y = center_y - (img_h / 2) - 40;
+  int start_y = center_y - (img_h / 2) - 60;
 
-  unsigned int bmp_idx = 54;
-  for (int y = img_h - 1; y >= 0; y--) {
+  unsigned int raw_idx = 0;
+
+  for (int y = 0; y < img_h; y++) {
     for (int x = 0; x < img_w; x++) {
-      if (bmp_idx + 2 < logo_bmp_len) {
-        unsigned char b = logo_bmp[bmp_idx];
-        unsigned char g = logo_bmp[bmp_idx + 1];
-        unsigned char r = logo_bmp[bmp_idx + 2];
-        unsigned int color = (r << 16) | (g << 8) | b;
+      unsigned char r = logo_data[raw_idx];
+      unsigned char g = logo_data[raw_idx + 1];
+      unsigned char b = logo_data[raw_idx + 2];
 
-        draw_pixel(start_x + x, start_y + y, color);
-        bmp_idx += 3;
-      }
-    }
-    if ((img_w * 3) % 4 != 0) {
-      bmp_idx += 4 - ((img_w * 3) % 4);
+      unsigned int color = (r << 16) | (g << 8) | b;
+      draw_pixel(start_x + x, start_y + y, color);
+
+      raw_idx += 4;
     }
   }
 
-  int radius = 50;
+  int anim_center_y = center_y + 60;
+  int radius = 35;
   for (int step = 0; step < 36; step++) {
     int x_offset = (radius * cos_table[step]) / 256;
     int y_offset = (radius * sin_table[step]) / 256;
 
-    draw_rect(center_x + x_offset - 2, center_y + 40 + y_offset - 2, 5, 5,
+    draw_rect(center_x + x_offset - 2, anim_center_y + y_offset - 2, 5, 5,
               0x00005B9E);
     sleep_ms(1000);
   }
@@ -383,15 +370,8 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
   draw_status_bar();
 
   while (1) {
-    loop_counter++;
-    if (loop_counter >= 150000) {
-      system_seconds++;
-      loop_counter = 0;
-
-      if (system_seconds >= 60) {
-        system_seconds = 0;
-        system_minutes++;
-      }
+    unsigned char current_sec = get_rtc_register(0x00);
+    if (current_sec != last_known_second) {
       draw_status_bar();
     }
     unsigned char status = 0;
