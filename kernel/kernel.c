@@ -338,5 +338,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
         }
       }
     }
+
+    sleep_ms(1);
   }
 }
