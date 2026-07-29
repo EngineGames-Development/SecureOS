@@ -5,19 +5,24 @@ LD = ld
 CFLAGS = -m32 -Wall -Wextra -ffreestanding -O2 -nostdlib -nostdinc -fno-builtin -fno-pie -fno-pic -mno-80387 -mno-mmx -mno-sse -mno-sse2 -Ikernel
 LDFLAGS = -m elf_i386 -no-pie -T kernel/linker.ld
 
-KERNEL_SOURCES = kernel/kernel.c kernel/lib/commands.c kernel/lib/font.c kernel/lib/memory.c kernel/lib/string.c
-KERNEL_OBJS = $(KERNEL_SOURCES:.c=.o)
+KERNEL_SOURCES = $(wildcard kernel/*.c) $(wildcard kernel/lib/*.c)
+ASM_SOURCES = kernel/entry.asm kernel/lib/logo.asm
+
+KERNEL_OBJS = kernel/entry.o kernel/lib/logo.o $(KERNEL_SOURCES:.c=.o)
 
 all: secureos.iso
 
 kernel/entry.o: kernel/entry.asm
 	$(AS) -f elf32 $< -o $@
 
+kernel/lib/logo.o: kernel/lib/logo.asm
+	$(AS) -f elf32 $< -o $@
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-kernel.bin: kernel/entry.o $(KERNEL_OBJS)
-	$(LD) $(LDFLAGS) kernel/entry.o $(KERNEL_OBJS) -o $@
+kernel.bin: $(KERNEL_OBJS)
+	$(LD) $(LDFLAGS) $(KERNEL_OBJS) -o $@
 
 secureos.iso: kernel.bin
 	mkdir -p iso_root/boot/grub

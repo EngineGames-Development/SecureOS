@@ -2,6 +2,9 @@
 #include "include/font.h"
 #include "include/memory.h"
 
+extern unsigned char logo_bmp[];
+extern unsigned int logo_bmp_len;
+
 #define NULL ((void *)0)
 #define TERM_ROWS 21
 #define TERM_COLS 72
@@ -21,6 +24,10 @@ int current_col = 0;
 
 char input_buffer[64];
 int input_length = 0;
+
+int system_seconds = 0;
+int system_minutes = 0;
+int loop_counter = 0;
 
 extern int strcmp(const char *str1, const char *str2);
 extern void process_command(void);
@@ -238,11 +245,120 @@ void init_idt(void) {
   asm volatile("lidt (%0)" : : "r"(&idtp));
 }
 
+unsigned char get_rtc_register(int reg) {
+  asm volatile("outb %0, $0x70" : : "a"((unsigned char)reg));
+  unsigned char val;
+  asm volatile("inb $0x71, %0" : "=a"(val));
+  return val;
+}
+
+void draw_status_bar(void) {
+  while (get_rtc_register(0x0A) & 0x80)
+    ;
+
+  unsigned char sec = get_rtc_register(0x00);
+  unsigned char min = get_rtc_register(0x02);
+  unsigned char hour = get_rtc_register(0x04);
+  unsigned char register_b = get_rtc_register(0x0B);
+
+  if (!(register_b & 0x04)) {
+    sec = (sec & 0x0F) + ((sec / 16) * 10);
+    min = (min & 0x0F) + ((min / 16) * 10);
+    hour = ((hour & 0x0F) + (((hour & 0x70) / 16) * 10)) | (hour & 0x80);
+  }
+
+  if (!(register_b & 0x02) && (hour & 0x80)) {
+    hour = ((hour & 0x7F) + 12) % 24;
+  }
+
+  int local_hour = (int)hour + 2;
+  if (local_hour >= 24) {
+    local_hour -= 24;
+  }
+
+  draw_rect(screen_width - 210, 16, 200, 20, 0x001A1A24);
+
+  int start_x = screen_width - 150;
+
+  int h_tens = local_hour / 10;
+  int h_ones = local_hour % 10;
+  draw_char(start_x, 18, h_tens + '0', 0x00FFFFFF);
+  draw_char(start_x + 8, 18, h_ones + '0', 0x00FFFFFF);
+
+  draw_char(start_x + 16, 18, ':', 0x00FFFFFF);
+
+  int m_tens = (int)min / 10;
+  int m_ones = (int)min % 10;
+  draw_char(start_x + 24, 18, m_tens + '0', 0x00FFFFFF);
+  draw_char(start_x + 32, 18, m_ones + '0', 0x00FFFFFF);
+
+  draw_char(start_x + 40, 18, ':', 0x00FFFFFF);
+
+  int s_tens = (int)sec / 10;
+  int s_ones = (int)sec % 10;
+  draw_char(start_x + 48, 18, s_tens + '0', 0x00FFFFFF);
+  draw_char(start_x + 56, 18, s_ones + '0', 0x00FFFFFF);
+
+  draw_string(start_x + 70, 18, "CEST", 0x00005B9E);
+}
+
+int sin_table[36] = {0,    44,   87,   128,  164,  196,  221,  240,  252,
+                     256,  252,  240,  221,  196,  164,  128,  87,   44,
+                     0,    -44,  -87,  -128, -164, -196, -221, -240, -252,
+                     -256, -252, -240, -221, -196, -164, -128, -87,  -44};
+
+int cos_table[36] = {256,  252,  240,  221,  196,  164,  128,  87,   44,
+                     0,    -44,  -87,  -128, -164, -196, -221, -240, -252,
+                     -256, -252, -240, -221, -196, -164, -128, -87,  -44,
+                     0,    44,   87,   128,  164,  196,  221,  240,  252};
+
+void draw_bootscreen_animation(void) {
+  clear_screen_gui(0x000A0A0F);
+
+  int center_x = screen_width / 2;
+  int center_y = screen_height / 2;
+
+  int img_w = 64;
+  int img_h = 64;
+  int start_x = center_x - (img_w / 2);
+  int start_y = center_y - (img_h / 2) - 40;
+
+  unsigned int bmp_idx = 54;
+  for (int y = img_h - 1; y >= 0; y--) {
+    for (int x = 0; x < img_w; x++) {
+      if (bmp_idx + 2 < logo_bmp_len) {
+        unsigned char b = logo_bmp[bmp_idx];
+        unsigned char g = logo_bmp[bmp_idx + 1];
+        unsigned char r = logo_bmp[bmp_idx + 2];
+        unsigned int color = (r << 16) | (g << 8) | b;
+
+        draw_pixel(start_x + x, start_y + y, color);
+        bmp_idx += 3;
+      }
+    }
+    if ((img_w * 3) % 4 != 0) {
+      bmp_idx += 4 - ((img_w * 3) % 4);
+    }
+  }
+
+  int radius = 50;
+  for (int step = 0; step < 36; step++) {
+    int x_offset = (radius * cos_table[step]) / 256;
+    int y_offset = (radius * sin_table[step]) / 256;
+
+    draw_rect(center_x + x_offset - 2, center_y + 40 + y_offset - 2, 5, 5,
+              0x00005B9E);
+    sleep_ms(1000);
+  }
+}
+
 void start_graphics_terminal(unsigned int *multiboot_info) {
   (void)multiboot_info;
   framebuffer = (unsigned int *)0xFD000000;
   screen_width = 1024;
   screen_height = 768;
+
+  draw_bootscreen_animation();
 
   init_idt();
   init_memory();
@@ -264,7 +380,20 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
   int shift_pressed = 0;
   int caps_lock = 0;
 
+  draw_status_bar();
+
   while (1) {
+    loop_counter++;
+    if (loop_counter >= 150000) {
+      system_seconds++;
+      loop_counter = 0;
+
+      if (system_seconds >= 60) {
+        system_seconds = 0;
+        system_minutes++;
+      }
+      draw_status_bar();
+    }
     unsigned char status = 0;
     asm volatile("inb $0x64, %0" : "=a"(status));
 
