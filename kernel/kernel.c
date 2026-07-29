@@ -42,11 +42,16 @@ struct idt_entry idt[32];
 struct idt_ptr idtp;
 
 unsigned char keyboard_map[128] = {
-    0,   27,  '1',  '2',  '3',  '4', '5', '6',  '7', '8', '9', '0',
-    '-', '=', '\b', '\t', 'q',  'w', 'e', 'r',  't', 'y', 'u', 'i',
-    'o', 'p', '[',  ']',  '\n', 0,   'a', 's',  'd', 'f', 'g', 'h',
-    'j', 'k', 'l',  ';',  '\'', '`', 0,   '\\', 'z', 'x', 'c', 'v',
-    'b', 'n', 'm',  ',',  '.',  '/', 0,   '*',  0,   ' ', 0xA9};
+    0,   27,   '1',  '2', '3',  '4', '5', '6', '7', '8', '9', '0', '-',
+    '=', '\b', '\t', 'q', 'w',  'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+    '[', ']',  '\n', 0,   'a',  's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
+    ';', '\'', '`',  0,   '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',',
+    '.', '/',  0,    '*', 0,    ' ', 0,   0,   0,   0,   0,   0,   0,
+    0,   0,    0,    0,   0,    0,   0,   0,   0,   '-', 0,   0,   0,
+    '+', 0,    0,    0,   0,    0,   0,   0,   0,   0,   0,   0,   0,
+    0,   0,    0,    0,   0,    0,   0,   0,   0,   0,   0,   0,   0,
+    0,   0,    0,    0,   0,    0,   0,   0,   0,   0,   0,   0,   0,
+    0,   0,    0,    0,   0,    0,   0,   0,   0,   0,   0xA9};
 
 void draw_pixel(unsigned int x, unsigned int y, unsigned int color) {
   if (x >= screen_width || y >= screen_height || framebuffer == NULL)
@@ -159,6 +164,34 @@ void print_char(char c) {
   redraw_terminal_text();
 }
 
+void print_int(int num) {
+  char buf[12];
+  int i = 10;
+  buf[11] = '\0';
+
+  if (num == 0) {
+    print_string("0");
+    return;
+  }
+
+  int is_negative = 0;
+  if (num < 0) {
+    is_negative = 1;
+    num = -num;
+  }
+
+  while (num > 0 && i >= 0) {
+    buf[i--] = (num % 10) + '0';
+    num /= 10;
+  }
+
+  if (is_negative) {
+    buf[i--] = '-';
+  }
+
+  print_string(&buf[i + 1]);
+}
+
 void print_string(const char *str) {
   for (int i = 0; str[i] != '\0'; i++) {
     print_char(str[i]);
@@ -228,16 +261,66 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
 
   clear_screen();
   print_string("SECUREOS READY.\n> ");
+  int shift_pressed = 0;
+  int caps_lock = 0;
 
   while (1) {
     unsigned char status = 0;
     asm volatile("inb $0x64, %0" : "=a"(status));
+
     if (status & 1) {
       unsigned char scancode = 0;
       asm volatile("inb $0x60, %0" : "=a"(scancode));
+
+      if (scancode == 0x2A || scancode == 0x36) {
+        shift_pressed = 1;
+        continue;
+      } else if (scancode == 0xAA || scancode == 0xB6) {
+        shift_pressed = 0;
+        continue;
+      } else if (scancode == 0x3A) {
+        caps_lock = !caps_lock;
+        continue;
+      }
+
       if (!(scancode & 0x80)) {
         char c = keyboard_map[scancode];
         if (c != 0) {
+
+          if (c >= 'a' && c <= 'z') {
+            if (shift_pressed ^ caps_lock) {
+              c = c - 32;
+            }
+          } else if (shift_pressed) {
+            if (c == '1') {
+              c = '!';
+            } else if (c == '2') {
+              c = '"';
+            } else if (c == '3') {
+              c = 39;
+            } else if (c == '4') {
+              c = '$';
+            } else if (c == '5') {
+              c = '%';
+            } else if (c == '6') {
+              c = '&';
+            } else if (c == '7') {
+              c = '/';
+            } else if (c == '8') {
+              c = '(';
+            } else if (c == '9') {
+              c = ')';
+            } else if (c == '0') {
+              c = '=';
+            } else if (c == '-') {
+              c = '_';
+            } else if (c == '=') {
+              c = '+';
+            } else if (c == '/') {
+              c = '*';
+            }
+          }
+
           if (c == '\n') {
             input_buffer[input_length] = '\0';
             process_command();

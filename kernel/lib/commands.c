@@ -15,6 +15,7 @@ void process_command() {
     print_string(" - help     : Show this help menu\n");
     print_string(" - about    : Shows the about\n");
     print_string(" - clear    : Clear the terminal window\n");
+    print_string(" - calc     : Calculate an equation (e.g., calc 5 + 3)\n");
     print_string(" - malloc   : Test dynamic kernel allocation\n");
     print_string(" - crash    : Provoke a real hardware division-by-zero\n");
     print_string(" - panic    : Trigger a direct manual panic\n");
@@ -22,9 +23,87 @@ void process_command() {
   } else if (strcmp(input_buffer, "about") == 0) {
     print_string("This project is licensed under the MIT License\nCopyright © "
                  "2026 EngineGames-Development.\n");
-  }
+  } else if (strcmp(input_buffer, "calc") == 0) {
+    print_string("Need at least two arguments!\n");
+  } else if (strncmp(input_buffer, "calc ", 5) == 0) {
+    char *p = input_buffer + 5;
+    int res = 0;
+    int has_num = 0;
 
-  else if (strcmp(input_buffer, "malloc") == 0) {
+    while (*p == ' ') {
+      p++;
+    }
+    if (*p >= '0' && *p <= '9') {
+      while (*p >= '0' && *p <= '9') {
+        res = res * 10 + (*p - '0');
+        p++;
+      }
+      has_num = 1;
+    }
+
+    if (!has_num) {
+      print_string("Error: Number expected\n");
+    } else {
+      int error_occurred = 0;
+      while (*p != '\0') {
+        while (*p == ' ') {
+          p++;
+        }
+        if (*p == '\0') {
+          break;
+        }
+
+        char op = *p++;
+        if (op != '+' && op != '-' && op != '*' && op != '/') {
+          print_string("Error: Invalid operator\n");
+          error_occurred = 1;
+          break;
+        }
+
+        while (*p == ' ') {
+          p++;
+        }
+
+        int next_num = 0;
+        has_num = 0;
+
+        if (*p >= '0' && *p <= '9') {
+          while (*p >= '0' && *p <= '9') {
+            next_num = next_num * 10 + (*p - '0');
+            p++;
+          }
+          has_num = 1;
+        }
+
+        if (!has_num) {
+          print_string("Error: Number expected after operator\n");
+          error_occurred = 1;
+          break;
+        }
+
+        if (op == '+')
+          res += next_num;
+        else if (op == '-')
+          res -= next_num;
+        else if (op == '*')
+          res *= next_num;
+        else if (op == '/') {
+          if (next_num == 0) {
+            print_string("Error: Division by zero\n");
+            error_occurred = 1;
+            break;
+          }
+          res /= next_num;
+        }
+      }
+
+      if (!error_occurred) {
+        print_string("Result: ");
+        print_int(res);
+        print_string("\n");
+      }
+    }
+  } else if (strcmp(input_buffer, "malloc") == 0) {
     void *ptr = kmalloc(1024);
     if (ptr != 0) {
       print_string("Memory successfully allocated at heap!\n");
