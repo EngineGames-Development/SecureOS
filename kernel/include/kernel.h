@@ -7,11 +7,14 @@ void draw_rect(unsigned int start_x, unsigned int start_y, unsigned int width,
 void clear_screen(void);
 void print_char(char c);
 void print_int(int num);
+void print_unsigned(unsigned int num);
 void print_string(const char *str);
+void printf(const char *format, ...);
 void sleep_ms(int milliseconds);
 void trigger_kernel_panic_gui(const char *error_msg);
 
 extern char input_buffer[];
 extern int input_length;
+unsigned char get_rtc_register(int reg);
 
 #endif

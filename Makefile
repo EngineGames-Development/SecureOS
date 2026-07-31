@@ -2,7 +2,7 @@ CC = gcc
 AS = nasm
 LD = ld
 
-CFLAGS = -m32 -Wall -Wextra -ffreestanding -O2 -nostdlib -nostdinc -fno-builtin -fno-pie -fno-pic -mno-80387 -mno-mmx -mno-sse -mno-sse2 -Ikernel
+CFLAGS = -m32 -Wall -Wextra -ffreestanding -O2 -nostdlib -fno-builtin -fno-pie -fno-pic -mno-80387 -mno-mmx -mno-sse -mno-sse2 -Ikernel
 LDFLAGS = -m elf_i386 -no-pie -T kernel/linker.ld
 
 KERNEL_SOURCES = $(wildcard kernel/*.c) $(wildcard kernel/lib/*.c)

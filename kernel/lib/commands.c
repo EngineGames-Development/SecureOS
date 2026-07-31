@@ -5,6 +5,14 @@
 extern char input_buffer[];
 extern int input_length;
 
+unsigned char get_rtc_month(unsigned char register_b) {
+  unsigned char month = get_rtc_register(0x08);
+  if (!(register_b & 0x04)) {
+    month = (month & 0x0F) + ((month >> 4) * 10);
+  }
+  return month;
+}
+
 void process_command() {
   print_string("\n");
 
@@ -14,6 +22,7 @@ void process_command() {
     print_string("Commands:\n");
     print_string(" - help     : Show this help menu\n");
     print_string(" - about    : Shows the about\n");
+    print_string(" - sysinfo   : Shows info about the os\n");
     print_string(" - clear    : Clear the terminal window\n");
     print_string(" - calc     : Calculate an equation (e.g., calc 5 + 3)\n");
     print_string(" - malloc   : Test dynamic kernel allocation\n");
@@ -23,6 +32,26 @@ void process_command() {
   } else if (strcmp(input_buffer, "about") == 0) {
     print_string("This project is licensed under the MIT License\nCopyright © "
                  "2026 EngineGames-Development.\n");
+  } else if (strcmp(input_buffer, "sysinfo") == 0) {
+    int timezone_offset = 1;
+    const char *tz_string = "CET";
+    unsigned char hour = get_rtc_register(0x04);
+    unsigned char month = get_rtc_month(0x0B);
+
+    if (month >= 4 && month <= 9) {
+      timezone_offset = 2;
+      tz_string = "CEST";
+    }
+
+    int local_hour = (int)hour + timezone_offset;
+    if (local_hour >= 24) {
+      local_hour -= 24;
+    }
+    unsigned int free_mem = get_free_memory_size();
+    if (free_mem < 1024) {
+      print_string("Warning: Low memory!\n");
+    }
+    printf("Secure OS,%s,Free memory size: %u bytes\n", tz_string, free_mem);
   } else if (strcmp(input_buffer, "calc") == 0) {
     print_string("Need at least two arguments!\n");
   } else if (strncmp(input_buffer, "calc ", 5) == 0) {

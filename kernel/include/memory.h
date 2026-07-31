@@ -9,5 +9,6 @@ struct memory_block {
 void init_memory(void);
 void *kmalloc(unsigned int size);
 void kfree(void *ptr);
+unsigned int get_free_memory_size(void);
 
 #endif

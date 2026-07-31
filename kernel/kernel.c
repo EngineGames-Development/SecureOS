@@ -1,6 +1,7 @@
 #include "include/kernel.h"
 #include "include/font.h"
 #include "include/memory.h"
+#include <stdarg.h>
 
 extern unsigned char logo_data[];
 
@@ -197,11 +198,82 @@ void print_int(int num) {
 
   print_string(&buf[i + 1]);
 }
+void print_unsigned(unsigned int num) {
+  char buf[12];
+  int i = 10;
+  buf[11] = '\0';
+
+  if (num == 0) {
+    print_string("0");
+    return;
+  }
+
+  while (num > 0 && i >= 0) {
+    buf[i--] = (num % 10) + '0';
+    num /= 10;
+  }
+
+  print_string(&buf[i + 1]);
+}
 
 void print_string(const char *str) {
   for (int i = 0; str[i] != '\0'; i++) {
     print_char(str[i]);
   }
+}
+
+void printf(const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+
+  for (int i = 0; format[i] != '\0'; i++) {
+    if (format[i] != '%') {
+      print_char(format[i]);
+      continue;
+    }
+
+    i++;
+    if (format[i] == '\0') {
+      break;
+    }
+
+    switch (format[i]) {
+    case 'c': {
+      char c = (char)va_arg(args, int);
+      print_char(c);
+      break;
+    }
+    case 's': {
+      char *s = va_arg(args, char *);
+      if (s == 0)
+        s = "(null)";
+      print_string(s);
+      break;
+    }
+    case 'd':
+    case 'i': {
+      int d = va_arg(args, int);
+      print_int(d);
+      break;
+    }
+    case 'u': {
+      unsigned int u = va_arg(args, unsigned int);
+      print_unsigned(u);
+      break;
+    }
+    case '%': {
+      print_char('%');
+      break;
+    }
+    default: {
+      print_char('%');
+      print_char(format[i]);
+      break;
+    }
+    }
+  }
+
+  va_end(args);
 }
 
 void sleep_ms(int milliseconds) {

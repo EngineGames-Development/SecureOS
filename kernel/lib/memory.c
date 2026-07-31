@@ -77,3 +77,25 @@ void kfree(void *ptr) {
     }
   }
 }
+
+unsigned int get_free_memory_size(void) {
+  unsigned int total_free = 0;
+
+  unsigned int current_address = heap_start;
+
+  while (1) {
+    struct memory_block *current_block = (struct memory_block *)current_address;
+
+    if (current_block->is_free) {
+      total_free += current_block->size;
+    }
+
+    current_address += current_block->size + sizeof(struct memory_block);
+
+    if (current_address >= heap_start + (4 * 1024 * 1024)) {
+      break;
+    }
+  }
+
+  return total_free;
+}
