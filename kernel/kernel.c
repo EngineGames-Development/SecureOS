@@ -24,6 +24,7 @@ int current_col = 0;
 
 char input_buffer[64];
 int input_length = 0;
+int start_menu_open = 0;
 
 int system_seconds = 0;
 int system_minutes = 0;
@@ -323,6 +324,32 @@ unsigned char get_rtc_register(int reg) {
   return val;
 }
 
+void draw_start_menu(void) {
+  int menu_x = 6;
+  int menu_w = 200;
+  int menu_h = 250;
+  int menu_y = screen_height - 40 - menu_h - 6;
+  if (start_menu_open) {
+    draw_rect(menu_x, menu_y, menu_w, menu_h, 0x0022222B);
+    draw_rect(menu_x + 2, menu_y + 2, menu_w - 4, menu_h - 4, 0x001A1A24);
+
+    draw_string(menu_x + 15, menu_y + 20, "--- APPS ---", 0x00005B9E);
+    draw_string(menu_x + 15, menu_y + 60, "1. Terminal", 0x00FFFFFF);
+    draw_string(menu_x + 15, menu_y + 90, "2. Settings", 0x00888888);
+    draw_string(menu_x + 15, menu_y + 120, "3. Games", 0x00888888);
+
+    draw_rect(menu_x + 10, menu_y + 160, menu_w - 20, 2, 0x0022222B);
+    draw_string(menu_x + 15, menu_y + 180, "Press ESC to close", 0x00888888);
+  } else {
+    draw_rect(menu_x, menu_y, menu_w, menu_h, 0x001A1A24);
+
+    redraw_terminal_text();
+    draw_window(term_box_x, term_box_y, term_box_width, term_box_height,
+                "CONSOLE TERMINAL");
+    redraw_terminal_text();
+  }
+}
+
 void draw_status_bar(void) {
   while (get_rtc_register(0x0A) & 0x80)
     ;
@@ -465,6 +492,11 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
       }
 
       if (!(scancode & 0x80)) {
+        if (scancode == 0x01) {
+          start_menu_open = !start_menu_open;
+          draw_start_menu();
+          continue;
+        }
         char c = keyboard_map[scancode];
         if (c != 0) {
 
