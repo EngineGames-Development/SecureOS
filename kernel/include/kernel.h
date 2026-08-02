@@ -7,10 +7,7 @@ void draw_rect(unsigned int start_x, unsigned int start_y, unsigned int width,
 void clear_screen(void);
 void print_char(char c);
 void print_int(int num);
-<<<<<<< HEAD
 void print_float(float num, int decimals);
-=======
->>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
 void print_unsigned(unsigned int num);
 void print_string(const char *str);
 void printf(const char *format, ...);

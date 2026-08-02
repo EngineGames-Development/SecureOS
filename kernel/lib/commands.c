@@ -56,17 +56,14 @@ void process_command() {
     print_string("Need at least two arguments!\n");
   } else if (strncmp(input_buffer, "calc ", 5) == 0) {
     char *p = input_buffer + 5;
-<<<<<<< HEAD
+
     float res = 0.0f;
-=======
-    int res = 0;
->>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
+
     int has_num = 0;
 
     while (*p == ' ') {
       p++;
     }
-<<<<<<< HEAD
 
     if ((*p >= '0' && *p <= '9') || *p == '.') {
       float factor = 1.0f;
@@ -83,143 +80,149 @@ void process_command() {
           factor *= 0.1f;
           res += (float)(*p - '0') * factor;
         }
-=======
-    if (*p >= '0' && *p <= '9') {
-      while (*p >= '0' && *p <= '9') {
-        res = res * 10 + (*p - '0');
->>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
-        p++;
-      }
-      has_num = 1;
-    }
-
-    if (!has_num) {
-      print_string("Error: Number expected\n");
-    } else {
-      int error_occurred = 0;
-      while (*p != '\0') {
-        while (*p == ' ') {
-          p++;
-        }
-        if (*p == '\0') {
-          break;
-        }
-
-        char op = *p++;
-        if (op != '+' && op != '-' && op != '*' && op != '/') {
-          print_string("Error: Invalid operator\n");
-          error_occurred = 1;
-          break;
-        }
-
-        while (*p == ' ') {
-          p++;
-        }
-
-<<<<<<< HEAD
-        float next_num = 0.0f;
-        has_num = 0;
-
-        if ((*p >= '0' && *p <= '9') || *p == '.') {
-          float factor = 1.0f;
-          int is_decimal = 0;
-          while ((*p >= '0' && *p <= '9') || *p == '.') {
-            if (*p == '.') {
-              is_decimal = 1;
-              p++;
-              continue;
-            }
-            if (!is_decimal) {
-              next_num = next_num * 10.0f + (float)(*p - '0');
-            } else {
-              factor *= 0.1f;
-              next_num += (float)(*p - '0') * factor;
-            }
-=======
-        int next_num = 0;
-        has_num = 0;
 
         if (*p >= '0' && *p <= '9') {
           while (*p >= '0' && *p <= '9') {
-            next_num = next_num * 10 + (*p - '0');
->>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
+            res = res * 10 + (*p - '0');
+
             p++;
           }
           has_num = 1;
         }
 
         if (!has_num) {
-          print_string("Error: Number expected after operator\n");
-          error_occurred = 1;
-          break;
-        }
+          print_string("Error: Number expected\n");
+        } else {
+          int error_occurred = 0;
+          while (*p != '\0') {
+            while (*p == ' ') {
+              p++;
+            }
+            if (*p == '\0') {
+              break;
+            }
 
-        if (op == '+')
-          res += next_num;
-        else if (op == '-')
-          res -= next_num;
-        else if (op == '*')
-          res *= next_num;
-        else if (op == '/') {
-<<<<<<< HEAD
-          if (next_num == 0.0f) {
-=======
-          if (next_num == 0) {
->>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
-            print_string("Error: Division by zero\n");
-            error_occurred = 1;
-            break;
+            char op = *p++;
+            if (op != '+' && op != '-' && op != '*' && op != '/') {
+              print_string("Error: Invalid operator\n");
+              error_occurred = 1;
+              break;
+            }
+
+            while (*p == ' ') {
+              p++;
+            }
+
+            float next_num = 0.0f;
+            has_num = 0;
+
+            if ((*p >= '0' && *p <= '9') || *p == '.') {
+              float factor = 1.0f;
+              int is_decimal = 0;
+              while ((*p >= '0' && *p <= '9') || *p == '.') {
+                if (*p == '.') {
+                  is_decimal = 1;
+                  p++;
+                  continue;
+                }
+                if (!is_decimal) {
+                  next_num = next_num * 10.0f + (float)(*p - '0');
+                } else {
+                  factor *= 0.1f;
+                  next_num += (float)(*p - '0') * factor;
+                }
+
+                int next_num = 0;
+                has_num = 0;
+
+                if (*p >= '0' && *p <= '9') {
+                  while (*p >= '0' && *p <= '9') {
+                    next_num = next_num * 10 + (*p - '0');
+
+                    p++;
+                  }
+                  has_num = 1;
+                }
+
+                if (!has_num) {
+                  print_string("Error: Number expected after operator\n");
+                  error_occurred = 1;
+                  break;
+                }
+
+                if (op == '+')
+                  res += next_num;
+                else if (op == '-')
+                  res -= next_num;
+                else if (op == '*')
+                  res *= next_num;
+                else if (op == '/') {
+
+                  if (next_num == 0.0f) {
+
+                    if (next_num == 0) {
+
+                      print_string("Error: Division by zero\n");
+                      error_occurred = 1;
+                      break;
+                    }
+                    res /= next_num;
+                  }
+                }
+
+                if (!error_occurred) {
+                  print_string("Result: ");
+
+                  print_float(res, 4);
+
+                  print_int(res);
+
+                  print_string("\n");
+                }
+              }
+            } else if (strcmp(input_buffer, "malloc") == 0) {
+              void *ptr = kmalloc(1024);
+              if (ptr != 0) {
+                print_string("Memory successfully allocated at heap!\n");
+                kfree(ptr);
+                print_string("Memory successfully freed!\n");
+              } else {
+                print_string("Allocation failed!\n");
+              }
+            } else if (strcmp(input_buffer, "crash") == 0) {
+              print_string("Provoking hardware exception...\n");
+              sleep_ms(300);
+              volatile int a = 5;
+              volatile int b = 0;
+              volatile int c = a / b;
+              (void)c;
+            } else if (strcmp(input_buffer, "shutdown") == 0) {
+              print_string("Shutting down SecureOS...\n");
+              sleep_ms(500);
+              asm volatile("outw %0, %1"
+                           :
+                           : "a"((unsigned short)0x2000),
+                             "Nd"((unsigned short)0x604));
+              asm volatile("outw %0, %1"
+                           :
+                           : "a"((unsigned short)0x2000),
+                             "Nd"((unsigned short)0xB004));
+            } else if (strcmp(input_buffer, "panic") == 0) {
+              trigger_kernel_panic_gui("MANUAL_PANIC_COMMAND_INVOKED");
+            } else if (input_length > 0) {
+              print_string("Command not found: ");
+              print_string(input_buffer);
+              print_string("\n");
+            }
+
+            for (int i = 0; i < 64; i++) {
+              input_buffer[i] = '\0';
+            }
+            input_length = 0;
+            print_string("> ");
           }
-          res /= next_num;
         }
       }
-
-      if (!error_occurred) {
-        print_string("Result: ");
-<<<<<<< HEAD
-        print_float(res, 4);
-=======
-        print_int(res);
->>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
-        print_string("\n");
-      }
     }
-  } else if (strcmp(input_buffer, "malloc") == 0) {
-    void *ptr = kmalloc(1024);
-    if (ptr != 0) {
-      print_string("Memory successfully allocated at heap!\n");
-      kfree(ptr);
-      print_string("Memory successfully freed!\n");
-    } else {
-      print_string("Allocation failed!\n");
-    }
-  } else if (strcmp(input_buffer, "crash") == 0) {
-    print_string("Provoking hardware exception...\n");
-    sleep_ms(300);
-    volatile int a = 5;
-    volatile int b = 0;
-    volatile int c = a / b;
-    (void)c;
-  } else if (strcmp(input_buffer, "shutdown") == 0) {
-    print_string("Shutting down SecureOS...\n");
-    sleep_ms(500);
-    asm volatile("outw %0, %1"
-                 :
-                 : "a"((unsigned short)0x2000), "Nd"((unsigned short)0x604));
-    asm volatile("outw %0, %1"
-                 :
-                 : "a"((unsigned short)0x2000), "Nd"((unsigned short)0xB004));
-  } else if (strcmp(input_buffer, "panic") == 0) {
-    trigger_kernel_panic_gui("MANUAL_PANIC_COMMAND_INVOKED");
-  } else if (input_length > 0) {
-    print_string("Command not found: ");
-    print_string(input_buffer);
-    print_string("\n");
   }
-
-  for (int i = 0; i < 64; i++) {
-    input_buffer[i] = '\0';
-  }
-  input_length = 0;
-  print_string("> ");
 }
