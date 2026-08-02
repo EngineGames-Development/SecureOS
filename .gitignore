@@ -1,0 +1,7 @@
+*.o
+*.bin
+*.img
+*.iso
+.git/
+bin/
+build/
