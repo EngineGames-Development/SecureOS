@@ -253,6 +253,7 @@ void print_int(int num) {
 
   print_string(&buf[i + 1]);
 }
+<<<<<<< HEAD
 
 void print_float(float num, int decimals) {
   if (num < 0) {
@@ -274,6 +275,8 @@ void print_float(float num, int decimals) {
   }
 }
 
+=======
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
 void print_unsigned(unsigned int num) {
   char buf[12];
   int i = 10;
@@ -533,6 +536,7 @@ void draw_mouse_pointer(int x, int y, unsigned int color) {
   draw_pixel(x, y + 6, color);
 }
 
+<<<<<<< HEAD
 void init_fpu(void) {
   unsigned int cr0;
   asm volatile("mov %%cr0, %0" : "=r"(cr0));
@@ -548,6 +552,8 @@ void init_fpu(void) {
   asm volatile("finit");
 }
 
+=======
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
 void start_graphics_terminal(unsigned int *multiboot_info) {
   (void)multiboot_info;
   framebuffer = (unsigned int *)0xFD000000;
@@ -558,7 +564,10 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
 
   init_idt();
   init_memory();
+<<<<<<< HEAD
   init_fpu();
+=======
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
   init_mouse();
 
   unsigned char dummy = 0;
@@ -614,11 +623,14 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
           int btn_left = start_btn_x;
           int btn_right = start_btn_x + start_btn_width;
 
+<<<<<<< HEAD
           int menu_x = 6;
           int menu_w = 200;
           int menu_h = 250;
           int menu_y = screen_height - taskbar_height - menu_h - 6;
 
+=======
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
           for (int wy = old_mouse_y - 2; wy < old_mouse_y + 10; wy++) {
             for (int wx = old_mouse_x - 2; wx < old_mouse_x + 10; wx++) {
               if (wx >= 0 && wx < (int)screen_width && wy >= 0 &&
@@ -628,6 +640,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
                 if (wx >= term_box_x && wx <= term_box_x + term_box_width &&
                     wy >= term_box_y && wy <= term_box_y + term_box_height) {
                   repair_color = 0x000A0A0F;
+<<<<<<< HEAD
                 } else if (start_menu_open && wx >= menu_x &&
                            wx <= (menu_x + menu_w) && wy >= menu_y &&
                            wy <= (menu_y + menu_h)) {
@@ -637,6 +650,8 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
                   } else {
                     repair_color = 0x001A1A24;
                   }
+=======
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
                 } else if (wy >= (int)screen_height - taskbar_height) {
                   if (wx >= btn_left && wx <= btn_right && wy >= btn_top &&
                       wy <= btn_bottom) {

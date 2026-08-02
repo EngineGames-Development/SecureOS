@@ -56,12 +56,17 @@ void process_command() {
     print_string("Need at least two arguments!\n");
   } else if (strncmp(input_buffer, "calc ", 5) == 0) {
     char *p = input_buffer + 5;
+<<<<<<< HEAD
     float res = 0.0f;
+=======
+    int res = 0;
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
     int has_num = 0;
 
     while (*p == ' ') {
       p++;
     }
+<<<<<<< HEAD
 
     if ((*p >= '0' && *p <= '9') || *p == '.') {
       float factor = 1.0f;
@@ -78,6 +83,11 @@ void process_command() {
           factor *= 0.1f;
           res += (float)(*p - '0') * factor;
         }
+=======
+    if (*p >= '0' && *p <= '9') {
+      while (*p >= '0' && *p <= '9') {
+        res = res * 10 + (*p - '0');
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
         p++;
       }
       has_num = 1;
@@ -106,6 +116,7 @@ void process_command() {
           p++;
         }
 
+<<<<<<< HEAD
         float next_num = 0.0f;
         has_num = 0;
 
@@ -124,6 +135,14 @@ void process_command() {
               factor *= 0.1f;
               next_num += (float)(*p - '0') * factor;
             }
+=======
+        int next_num = 0;
+        has_num = 0;
+
+        if (*p >= '0' && *p <= '9') {
+          while (*p >= '0' && *p <= '9') {
+            next_num = next_num * 10 + (*p - '0');
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
             p++;
           }
           has_num = 1;
@@ -142,7 +161,11 @@ void process_command() {
         else if (op == '*')
           res *= next_num;
         else if (op == '/') {
+<<<<<<< HEAD
           if (next_num == 0.0f) {
+=======
+          if (next_num == 0) {
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
             print_string("Error: Division by zero\n");
             error_occurred = 1;
             break;
@@ -153,7 +176,11 @@ void process_command() {
 
       if (!error_occurred) {
         print_string("Result: ");
+<<<<<<< HEAD
         print_float(res, 4);
+=======
+        print_int(res);
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
         print_string("\n");
       }
     }

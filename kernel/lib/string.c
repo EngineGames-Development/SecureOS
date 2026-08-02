@@ -28,6 +28,7 @@ int strncmp(const char *str1, const char *str2, unsigned int num) {
   }
   return 0;
 }
+<<<<<<< HEAD
 
 float string_to_float(const char *str, int *out_length) {
   float result = 0.0f;
@@ -62,3 +63,5 @@ float string_to_float(const char *str, int *out_length) {
 
   return result * sign;
 }
+=======
+>>>>>>> 24908548b5b8ab3880eeceea598dc4018ccfc983
