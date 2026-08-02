@@ -202,6 +202,7 @@ void print_char(char c) {
     current_col = 0;
     if (current_row >= TERM_ROWS) {
       scroll_terminal();
+      current_row = TERM_ROWS - 1;
     }
     redraw_terminal_text();
     return;
@@ -219,10 +220,14 @@ void print_char(char c) {
     current_col = 0;
     if (current_row >= TERM_ROWS) {
       scroll_terminal();
+      current_row = TERM_ROWS - 1;
     }
   }
-  terminal_buffer[current_row][current_col] = c;
-  current_col++;
+
+  if (current_row < TERM_ROWS && current_col < TERM_COLS) {
+    terminal_buffer[current_row][current_col] = c;
+    current_col++;
+  }
   redraw_terminal_text();
 }
 
@@ -762,6 +767,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
               input_length++;
             }
             draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
+            sleep_ms(10);
           }
         }
       }
