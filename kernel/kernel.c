@@ -42,6 +42,9 @@ int old_mouse_x = 512;
 int old_mouse_y = 384;
 unsigned char mouse_cycle = 0;
 char mouse_byte[3];
+#define CURSOR_SIZE 8
+
+unsigned int mouse_backup[CURSOR_SIZE][CURSOR_SIZE];
 
 extern int strcmp(const char *str1, const char *str2);
 extern void process_command(void);
@@ -571,6 +574,36 @@ void play_beep(int frequency, int duration) {
   outb(0x61, tmp & ~3);
 }
 
+void save_mouse_background(int x, int y) {
+  for (int py = 0; py < CURSOR_SIZE; py++) {
+    for (int px = 0; px < CURSOR_SIZE; px++) {
+      int sx = x + px;
+      int sy = y + py;
+
+      if (sx >= 0 && sx < (int)screen_width && sy >= 0 &&
+          sy < (int)screen_height) {
+
+        mouse_backup[py][px] = framebuffer[sy * screen_width + sx];
+      }
+    }
+  }
+}
+
+void restore_mouse_background(int x, int y) {
+  for (int py = 0; py < CURSOR_SIZE; py++) {
+    for (int px = 0; px < CURSOR_SIZE; px++) {
+      int sx = x + px;
+      int sy = y + py;
+
+      if (sx >= 0 && sx < (int)screen_width && sy >= 0 &&
+          sy < (int)screen_height) {
+
+        framebuffer[sy * screen_width + sx] = mouse_backup[py][px];
+      }
+    }
+  }
+}
+
 void start_graphics_terminal(unsigned int *multiboot_info) {
   (void)multiboot_info;
   framebuffer = (unsigned int *)0xFD000000;
@@ -604,7 +637,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
   int caps_lock = 0;
 
   draw_status_bar();
-
+  save_mouse_background(mouse_x, mouse_y);
   draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
 
   while (1) {
@@ -638,42 +671,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
           int btn_left = start_btn_x;
           int btn_right = start_btn_x + start_btn_width;
 
-          int menu_x = 6;
-          int menu_w = 200;
-          int menu_h = 250;
-          int menu_y = screen_height - taskbar_height - menu_h - 6;
-
-          for (int wy = old_mouse_y - 2; wy < old_mouse_y + 10; wy++) {
-            for (int wx = old_mouse_x - 2; wx < old_mouse_x + 10; wx++) {
-              if (wx >= 0 && wx < (int)screen_width && wy >= 0 &&
-                  wy < (int)screen_height) {
-                unsigned int repair_color = 0x001A1A24;
-
-                if (wx >= term_box_x && wx <= term_box_x + term_box_width &&
-                    wy >= term_box_y && wy <= term_box_y + term_box_height) {
-                  repair_color = 0x000A0A0F;
-                } else if (start_menu_open && wx >= menu_x &&
-                           wx <= (menu_x + menu_w) && wy >= menu_y &&
-                           wy <= (menu_y + menu_h)) {
-                  if (wx < menu_x + 2 || wx > (menu_x + menu_w) - 2 ||
-                      wy < menu_y + 2 || wy > (menu_y + menu_h) - 2) {
-                    repair_color = 0x0022222B;
-                  } else {
-                    repair_color = 0x001A1A24;
-                  }
-                } else if (wy >= (int)screen_height - taskbar_height) {
-                  if (wx >= btn_left && wx <= btn_right && wy >= btn_top &&
-                      wy <= btn_bottom) {
-                    repair_color = 0x00005B9E;
-                  } else {
-                    repair_color = 0x00101014;
-                  }
-                }
-
-                draw_pixel(wx, wy, repair_color);
-              }
-            }
-          }
+          restore_mouse_background(old_mouse_x, old_mouse_y);
 
           int move_x = (int)mouse_byte[1];
           int move_y = (int)mouse_byte[2];
@@ -704,6 +702,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
             }
           }
 
+          save_mouse_background(mouse_x, mouse_y);
           draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
 
           old_mouse_x = mouse_x;
