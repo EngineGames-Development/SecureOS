@@ -44,4 +44,8 @@ clean:
 	rm -rf iso_root
 
 run: all
-	qemu-system-x86_64 -cdrom secureos.iso -no-reboot
+	qemu-system-i386 \
+		-cdrom secureos.iso \
+		-no-reboot \
+		-audiodev driver=sdl,id=speaker \
+		-machine pc,pcspk-audiodev=speaker

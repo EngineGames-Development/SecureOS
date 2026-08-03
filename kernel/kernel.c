@@ -1,5 +1,6 @@
 #include "include/kernel.h"
 #include "include/font.h"
+#include "include/io.h"
 #include "include/memory.h"
 #include <stdarg.h>
 
@@ -553,6 +554,23 @@ void init_fpu(void) {
   asm volatile("finit");
 }
 
+void play_beep(int frequency, int duration) {
+  unsigned int divisor = 1193180 / frequency;
+
+  outb(0x43, 0xB6);
+
+  outb(0x42, divisor & 0xFF);
+  outb(0x42, (divisor >> 8) & 0xFF);
+
+  unsigned int tmp = inb(0x61);
+  outb(0x61, tmp | 3);
+
+  sleep_ms(duration);
+
+  tmp = inb(0x61);
+  outb(0x61, tmp & ~3);
+}
+
 void start_graphics_terminal(unsigned int *multiboot_info) {
   (void)multiboot_info;
   framebuffer = (unsigned int *)0xFD000000;
@@ -565,6 +583,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
   init_memory();
   init_fpu();
   init_mouse();
+  play_beep(440, 1000);
 
   unsigned char dummy = 0;
 
