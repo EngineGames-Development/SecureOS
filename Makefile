@@ -1,18 +1,18 @@
 CC = gcc
 AS = nasm
 LD = ld
-
-
-CFLAGS = -m32 -Wall -Wextra -ffreestanding -O2 -nostdlib -fno-builtin -fno-pie -fno-pic -mno-mmx -mno-sse -mno-sse2 -Ikernel
+RUSTC = rustc
 
 CFLAGS = -m32 -Wall -Wextra -ffreestanding -O2 -nostdlib -fno-builtin -fno-pie -fno-pic -mno-mmx -mno-sse -mno-sse2 -Ikernel
+RUSTFLAGS = --target i686-unknown-linux-gnu -O --crate-type=staticlib -C panic=abort -C relocation-model=static
 
 LDFLAGS = -m elf_i386 -no-pie -T kernel/linker.ld
 
-KERNEL_SOURCES = $(wildcard kernel/*.c) $(wildcard kernel/lib/*.c)
+C_SOURCES = $(wildcard kernel/*.c) $(wildcard kernel/lib/*.c)
 ASM_SOURCES = kernel/entry.asm kernel/lib/logo.asm
+RUST_SOURCES = $(wildcard kernel/lib/*.rs)
 
-KERNEL_OBJS = kernel/entry.o kernel/lib/logo.o $(KERNEL_SOURCES:.c=.o)
+KERNEL_OBJS = kernel/entry.o kernel/lib/logo.o $(C_SOURCES:.c=.o) $(RUST_SOURCES:.rs=.o)
 
 all: secureos.iso
 
@@ -21,6 +21,9 @@ kernel/entry.o: kernel/entry.asm
 
 kernel/lib/logo.o: kernel/lib/logo.asm
 	$(AS) -f elf32 $< -o $@
+
+%.o: %.rs
+	$(RUSTC) $(RUSTFLAGS) --emit=obj $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -46,6 +46,7 @@ char mouse_byte[3];
 
 unsigned int mouse_backup[CURSOR_SIZE][CURSOR_SIZE];
 
+extern void rust_init(void);
 extern int strcmp(const char *str1, const char *str2);
 extern void process_command(void);
 
@@ -615,6 +616,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
   init_idt();
   init_memory();
   init_fpu();
+  rust_init();
   init_mouse();
   play_beep(440, 1000);
 
