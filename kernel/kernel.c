@@ -47,6 +47,7 @@ char mouse_byte[3];
 unsigned int mouse_backup[CURSOR_SIZE][CURSOR_SIZE];
 
 extern void rust_init(void);
+extern void play_beep(int frequency, int duration);
 extern int strcmp(const char *str1, const char *str2);
 extern void process_command(void);
 
@@ -556,23 +557,6 @@ void init_fpu(void) {
   asm volatile("mov %0, %%cr4" : : "r"(cr4));
 
   asm volatile("finit");
-}
-
-void play_beep(int frequency, int duration) {
-  unsigned int divisor = 1193180 / frequency;
-
-  outb(0x43, 0xB6);
-
-  outb(0x42, divisor & 0xFF);
-  outb(0x42, (divisor >> 8) & 0xFF);
-
-  unsigned int tmp = inb(0x61);
-  outb(0x61, tmp | 3);
-
-  sleep_ms(duration);
-
-  tmp = inb(0x61);
-  outb(0x61, tmp & ~3);
 }
 
 void save_mouse_background(int x, int y) {

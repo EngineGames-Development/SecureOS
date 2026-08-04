@@ -24,8 +24,10 @@ kernel/lib/logo.o: kernel/lib/logo.asm
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-kernel/lib/librust_kernel.a: kernel/lib/rust_core.rs kernel/lib/pci_scanner.rs kernel/lib/calculator.rs
-	$(RUSTC) $(RUSTFLAGS) kernel/lib/rust_core.rs -o $@
+RUST_SRCS := $(wildcard kernel/lib/*.rs)
+
+kernel/lib/librust_kernel.a: $(RUST_SRCS)
+	cd kernel/lib && $(RUSTC) $(RUSTFLAGS) --crate-type=staticlib lib.rs -o ../../$@
 
 kernel.bin: $(KERNEL_OBJS)
 	$(LD) $(LDFLAGS) $(KERNEL_OBJS) -o $@
