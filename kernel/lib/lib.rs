@@ -1,4 +1,5 @@
 #![no_std]
+#![no_main]
 
 pub mod beep;
 pub mod calculator;
