@@ -1,5 +1,6 @@
 #include "include/kernel.h"
 #include "include/memory.h"
+#include "include/pci.h"
 #include "include/string.h"
 
 extern char input_buffer[];
@@ -7,6 +8,7 @@ extern int input_length;
 extern void trigger_kernel_panic_gui(const char *error_msg);
 extern unsigned int get_free_memory_size(void);
 extern void print_float(float num, int decimals);
+extern void scan_pci_bus();
 
 void process_command() {
   print_string("\n");
@@ -23,6 +25,7 @@ void process_command() {
     print_string(" - panic    : Trigger a direct manual panic\n");
     print_string(
         " - calc ... : Calculate float chains (e.g. calc 5.5 + 4.5)\n");
+    print_string(" - devices : Scan pci\n");
     print_string(" - shutdown : Turn off the OS and QEMU\n");
   } else if (strcmp(input_buffer, "sysinfo") == 0) {
     print_string("--- SECUREOS SYSTEM INFO ---\n");
@@ -31,6 +34,8 @@ void process_command() {
     print_string("Free Heap : ");
     print_int(get_free_memory_size());
     print_string(" Bytes\n");
+  } else if (strcmp(input_buffer, "devices") == 0) {
+    scan_pci_bus();
   } else if (strcmp(input_buffer, "malloc") == 0) {
     void *ptr = kmalloc(1024);
     if (ptr != 0) {

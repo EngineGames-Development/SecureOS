@@ -1,5 +1,6 @@
 #![no_std]
 
+pub mod pci_scanner;
 use core::panic::PanicInfo;
 
 extern "C" {

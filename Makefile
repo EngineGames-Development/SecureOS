@@ -10,9 +10,9 @@ LDFLAGS = -m elf_i386 -no-pie -T kernel/linker.ld
 
 C_SOURCES = $(wildcard kernel/*.c) $(wildcard kernel/lib/*.c)
 ASM_SOURCES = kernel/entry.asm kernel/lib/logo.asm
-RUST_SOURCES = $(wildcard kernel/lib/*.rs)
 
-KERNEL_OBJS = kernel/entry.o kernel/lib/logo.o $(C_SOURCES:.c=.o) $(RUST_SOURCES:.rs=.o)
+C_OBJS = $(C_SOURCES:.c=.o)
+KERNEL_OBJS = kernel/entry.o kernel/lib/logo.o $(C_OBJS) kernel/lib/librust_kernel.a
 
 all: secureos.iso
 
@@ -22,11 +22,11 @@ kernel/entry.o: kernel/entry.asm
 kernel/lib/logo.o: kernel/lib/logo.asm
 	$(AS) -f elf32 $< -o $@
 
-%.o: %.rs
-	$(RUSTC) $(RUSTFLAGS) --emit=obj $< -o $@
-
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+kernel/lib/librust_kernel.a: kernel/lib/rust_core.rs kernel/lib/pci_scanner.rs
+	$(RUSTC) $(RUSTFLAGS) kernel/lib/rust_core.rs -o $@
 
 kernel.bin: $(KERNEL_OBJS)
 	$(LD) $(LDFLAGS) $(KERNEL_OBJS) -o $@
@@ -43,7 +43,7 @@ secureos.iso: kernel.bin
 	grub-mkrescue -o $@ iso_root
 
 clean:
-	rm -f kernel/*.o kernel/lib/*.o kernel.bin secureos.iso
+	rm -f kernel/*.o kernel/lib/*.o kernel/lib/*.a kernel.bin secureos.iso
 	rm -rf iso_root
 
 run: all
