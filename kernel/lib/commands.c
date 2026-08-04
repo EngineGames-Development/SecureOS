@@ -1,3 +1,4 @@
+#include "include/beep.h"
 #include "include/calculator.h"
 #include "include/kernel.h"
 #include "include/memory.h"
@@ -77,6 +78,7 @@ void process_command() {
                  :
                  : "a"((unsigned short)0x2000), "Nd"((unsigned short)0xB004));
   } else if (input_length > 0) {
+    play_beep(250, 150);
     print_string("Command not found: ");
     print_string(input_buffer);
     print_string("\n");

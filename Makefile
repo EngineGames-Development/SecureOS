@@ -48,8 +48,13 @@ clean:
 	rm -rf iso_root
 
 run: all
-	qemu-system-i386 \
-		-cdrom secureos.iso \
-		-no-reboot \
-		-audiodev driver=sdl,id=speaker \
-		-machine pc,pcspk-audiodev=speaker
+	qemu-img create -f raw fat32_disk.img 64M
+
+	qemu-system-x86_64 \
+    -cdrom secureos.iso \
+    -drive id=disk,file=fat32_disk.img,if=none,format=raw \
+    -device ich9-ahci,id=ahci \
+    -device ide-hd,drive=disk,bus=ahci.0 \
+    -audiodev driver=sdl,id=speaker \
+    -machine pc,pcspk-audiodev=speaker \
+    -no-reboot
