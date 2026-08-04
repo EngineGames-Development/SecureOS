@@ -4,6 +4,7 @@
 pub mod beep;
 pub mod calculator;
 pub mod pci_scanner;
+
 use core::panic::PanicInfo;
 
 extern "C" {
@@ -23,5 +24,9 @@ fn panic(_info: &PanicInfo) -> ! {
     unsafe {
         trigger_kernel_panic_gui(b"RUST_RUNTIME_PANIC\0".as_ptr());
     }
-    loop {}
+    loop {
+        unsafe {
+            core::arch::asm!("hlt", options(nomem, nostack, preserves_flags));
+        }
+    }
 }
