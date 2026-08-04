@@ -1,5 +1,6 @@
 #![no_std]
 
+pub mod calculator;
 pub mod pci_scanner;
 use core::panic::PanicInfo;
 

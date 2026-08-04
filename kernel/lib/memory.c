@@ -129,3 +129,19 @@ void *memmove(void *dest, const void *src, unsigned int n) {
   }
   return dest;
 }
+
+int memcmp(const void *a, const void *b, unsigned int n) {
+  const unsigned char *x = a;
+  const unsigned char *y = b;
+
+  for (unsigned int i = 0; i < n; i++) {
+    if (x[i] != y[i])
+      return x[i] - y[i];
+  }
+
+  return 0;
+}
+
+int bcmp(const void *a, const void *b, unsigned int n) {
+  return memcmp(a, b, n);
+}

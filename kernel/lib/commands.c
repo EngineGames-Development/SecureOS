@@ -1,3 +1,4 @@
+#include "include/calculator.h"
 #include "include/kernel.h"
 #include "include/memory.h"
 #include "include/pci.h"
@@ -54,108 +55,17 @@ void process_command() {
     (void)c;
   } else if (strcmp(input_buffer, "panic") == 0) {
     trigger_kernel_panic_gui("MANUAL_PANIC_COMMAND_INVOKED");
+  } else if (strcmp(input_buffer, "calc") == 0) {
+    print_string("Need at least 2 arguments!\n");
   } else if (strncmp(input_buffer, "calc ", 5) == 0) {
-    char *p = input_buffer + 5;
-    float res = 0.0f;
-    int has_num = 0;
+    char result[64];
 
-    while (*p == ' ') {
-      p++;
-    }
+    int status = calc(input_buffer, result, sizeof(result));
 
-    if ((*p >= '0' && *p <= '9') || *p == '.') {
-      float factor = 1.0f;
-      int is_decimal = 0;
-      while ((*p >= '0' && *p <= '9') || *p == '.') {
-        if (*p == '.') {
-          is_decimal = 1;
-          p++;
-          continue;
-        }
-        if (!is_decimal) {
-          res = res * 10.0f + (float)(*p - '0');
-        } else {
-          factor *= 0.1f;
-          res += (float)(*p - '0') * factor;
-        }
-        p++;
-      }
-      has_num = 1;
-    }
-
-    if (!has_num) {
-      print_string("Error: Number expected\n");
+    if (status == 0) {
+      printf("Result: %s\n", result);
     } else {
-      int error_occurred = 0;
-      while (*p != '\0') {
-        while (*p == ' ') {
-          p++;
-        }
-        if (*p == '\0') {
-          break;
-        }
-
-        char op = *p++;
-        if (op != '+' && op != '-' && op != '*' && op != '/') {
-          print_string("Error: Invalid operator\n");
-          error_occurred = 1;
-          break;
-        }
-
-        while (*p == ' ') {
-          p++;
-        }
-
-        float next_num = 0.0f;
-        has_num = 0;
-
-        if ((*p >= '0' && *p <= '9') || *p == '.') {
-          float factor = 1.0f;
-          int is_decimal = 0;
-          while ((*p >= '0' && *p <= '9') || *p == '.') {
-            if (*p == '.') {
-              is_decimal = 1;
-              p++;
-              continue;
-            }
-            if (!is_decimal) {
-              next_num = next_num * 10.0f + (float)(*p - '0');
-            } else {
-              factor *= 0.1f;
-              next_num += (float)(*p - '0') * factor;
-            }
-            p++;
-          }
-          has_num = 1;
-        }
-
-        if (!has_num) {
-          print_string("Error: Number expected after operator\n");
-          error_occurred = 1;
-          break;
-        }
-
-        if (op == '+')
-          res += next_num;
-        else if (op == '-')
-          res -= next_num;
-        else if (op == '*')
-          res *= next_num;
-        else if (op == '/') {
-          if (next_num == 0.0f) {
-            print_string("Error: Division by zero\n");
-            error_occurred = 1;
-            break;
-          }
-          res /= next_num;
-        }
-      }
-
-      if (!error_occurred) {
-        print_string("Result: ");
-        print_float(res, 4);
-        print_string("\n");
-      }
+      printf("Calculation failed: %d\n", status);
     }
   } else if (strcmp(input_buffer, "shutdown") == 0) {
     print_string("Shutting down SecureOS...\n");

@@ -5,7 +5,6 @@ RUSTC = rustc
 
 CFLAGS = -m32 -Wall -Wextra -ffreestanding -O2 -nostdlib -fno-builtin -fno-pie -fno-pic -mno-mmx -mno-sse -mno-sse2 -Ikernel
 RUSTFLAGS = --target i686-unknown-linux-gnu -O --crate-type=staticlib -C panic=abort -C relocation-model=static
-
 LDFLAGS = -m elf_i386 -no-pie -T kernel/linker.ld
 
 C_SOURCES = $(wildcard kernel/*.c) $(wildcard kernel/lib/*.c)
@@ -25,7 +24,7 @@ kernel/lib/logo.o: kernel/lib/logo.asm
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-kernel/lib/librust_kernel.a: kernel/lib/rust_core.rs kernel/lib/pci_scanner.rs
+kernel/lib/librust_kernel.a: kernel/lib/rust_core.rs kernel/lib/pci_scanner.rs kernel/lib/calculator.rs
 	$(RUSTC) $(RUSTFLAGS) kernel/lib/rust_core.rs -o $@
 
 kernel.bin: $(KERNEL_OBJS)
