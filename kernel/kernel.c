@@ -41,10 +41,19 @@ int mouse_y = 384;
 int old_mouse_x = 512;
 int old_mouse_y = 384;
 unsigned char mouse_cycle = 0;
-char mouse_byte[3];
+unsigned char mouse_has_scroll_wheel = 0;
+char mouse_byte[4];
 #define CURSOR_SIZE 8
 
 unsigned int mouse_backup[CURSOR_SIZE][CURSOR_SIZE];
+
+#define HISTORY_ROWS 500
+#define TERMINAL_WINDOW_X 10
+#define TERMINAL_WINDOW_Y 40
+
+char terminal_history[HISTORY_ROWS][TERM_COLS];
+int history_count = 0;
+int scroll_offset = 0;
 
 extern void rust_init(void);
 extern void play_beep(int frequency, int duration);
@@ -179,14 +188,32 @@ void redraw_terminal_text(void) {
 }
 
 void scroll_terminal(void) {
+  if (history_count < HISTORY_ROWS) {
+    for (int c = 0; c < TERM_COLS; c++) {
+      terminal_history[history_count][c] = terminal_buffer[0][c];
+    }
+    history_count++;
+  } else {
+    for (int r = 0; r < HISTORY_ROWS - 1; r++) {
+      for (int c = 0; c < TERM_COLS; c++) {
+        terminal_history[r][c] = terminal_history[r + 1][c];
+      }
+    }
+    for (int c = 0; c < TERM_COLS; c++) {
+      terminal_history[HISTORY_ROWS - 1][c] = terminal_buffer[0][c];
+    }
+  }
+
   for (int r = 0; r < TERM_ROWS - 1; r++) {
     for (int c = 0; c < TERM_COLS; c++) {
       terminal_buffer[r][c] = terminal_buffer[r + 1][c];
     }
   }
+
   for (int c = 0; c < TERM_COLS; c++) {
     terminal_buffer[TERM_ROWS - 1][c] = '\0';
   }
+
   current_row = TERM_ROWS - 1;
   current_col = 0;
 }
@@ -235,6 +262,69 @@ void print_char(char c) {
     current_col++;
   }
   redraw_terminal_text();
+}
+
+void draw_mouse_pointer(int x, int y, unsigned int color) {
+  draw_pixel(x, y, color);
+  draw_pixel(x + 1, y, color);
+  draw_pixel(x, y + 1, color);
+  draw_pixel(x + 2, y, color);
+  draw_pixel(x + 1, y + 1, color);
+  draw_pixel(x, y + 2, color);
+  draw_pixel(x + 3, y, color);
+  draw_pixel(x, y + 3, color);
+  draw_pixel(x + 4, y, color);
+  draw_pixel(x + 2, y + 2, color);
+  draw_pixel(x, y + 4, color);
+  draw_pixel(x + 5, y, color);
+  draw_pixel(x, y + 5, color);
+  draw_pixel(x + 6, y, color);
+  draw_pixel(x + 3, y + 3, color);
+  draw_pixel(x, y + 6, color);
+}
+
+void redraw_terminal(void) {
+  int term_win_x = 216;
+  int term_win_y = 300;
+  int visible_cols = 70;
+  int visible_rows = 22;
+
+  draw_rect(term_win_x, term_win_y, 560, 360, 0x00000000);
+
+  for (int r = 0; r < visible_rows; r++) {
+    if (r >= TERM_ROWS)
+      break;
+
+    for (int c = 0; c < visible_cols; c++) {
+      if (c >= TERM_COLS)
+        break;
+
+      char ch = ' ';
+
+      if (scroll_offset > 0) {
+        int history_index = history_count - scroll_offset + r;
+        if (history_index >= 0 && history_index < history_count &&
+            history_index < HISTORY_ROWS) {
+          ch = terminal_history[history_index][c];
+        } else {
+          ch = terminal_buffer[r][c];
+        }
+      } else {
+        ch = terminal_buffer[r][c];
+      }
+
+      if (ch == '\0' || ch == '\n' || ch == '\r') {
+        ch = ' ';
+      }
+
+      int pixel_x = term_win_x + (c * 8);
+      int pixel_y = term_win_y + (r * 16);
+
+      if (pixel_x < (term_win_x + 550) && pixel_y < (term_win_y + 350)) {
+        draw_char(pixel_x, pixel_y, ch, 0x00FFFFFF);
+      }
+    }
+  }
 }
 
 void print_int(int num) {
@@ -382,6 +472,7 @@ void trigger_kernel_panic_gui(const char *error_msg) {
   draw_string(50, 210, "The system has been halted to prevent damage.",
               0x00FFFFFF);
   while (1) {
+    play_beep(750, 100);
     asm volatile("hlt");
   }
 }
@@ -488,12 +579,12 @@ void mouse_wait(unsigned char type) {
   unsigned int timeout = 100000;
   if (type == 0) {
     while (timeout--) {
-      if ((char)(get_rtc_register(0x64) & 1) == 1)
+      if ((char)(inb(0x64) & 1) == 1)
         return;
     }
   } else {
     while (timeout--) {
-      if ((char)(get_rtc_register(0x64) & 2) == 0)
+      if ((char)(inb(0x64) & 2) == 0)
         return;
     }
   }
@@ -504,6 +595,47 @@ void mouse_write(unsigned char a) {
   asm volatile("outb %0, $0x64" : : "a"((unsigned char)0xD4));
   mouse_wait(1);
   asm volatile("outb %0, $0x60" : : "a"(a));
+}
+
+unsigned char mouse_read(void) {
+  unsigned char data;
+
+  mouse_wait(0);
+
+  asm volatile("inb $0x60, %0" : "=a"(data));
+
+  return data;
+}
+
+int init_scroll_wheel(void) {
+  unsigned char device_id;
+
+  mouse_write(0xF3);
+  mouse_read();
+  mouse_write(200);
+  mouse_read();
+
+  mouse_write(0xF3);
+  mouse_read();
+  mouse_write(100);
+  mouse_read();
+
+  mouse_write(0xF3);
+  mouse_read();
+  mouse_write(80);
+  mouse_read();
+
+  mouse_write(0xF2);
+  mouse_read();
+  device_id = mouse_read();
+
+  if (device_id == 3) {
+    mouse_write(0xF4);
+    mouse_read();
+    return 1;
+  }
+
+  return 0;
 }
 
 void init_mouse(void) {
@@ -522,26 +654,13 @@ void init_mouse(void) {
   mouse_wait(1);
   asm volatile("outb %0, $0x60" : : "a"(status));
 
-  mouse_write(0xF4);
-}
-
-void draw_mouse_pointer(int x, int y, unsigned int color) {
-  draw_pixel(x, y, color);
-  draw_pixel(x + 1, y, color);
-  draw_pixel(x, y + 1, color);
-  draw_pixel(x + 2, y, color);
-  draw_pixel(x + 1, y + 1, color);
-  draw_pixel(x, y + 2, color);
-  draw_pixel(x + 3, y, color);
-  draw_pixel(x, y + 3, color);
-  draw_pixel(x + 4, y, color);
-  draw_pixel(x + 2, y + 2, color);
-  draw_pixel(x, y + 4, color);
-  draw_pixel(x + 5, y, color);
-  draw_pixel(x, y + 5, color);
-  draw_pixel(x + 6, y, color);
-  draw_pixel(x + 3, y + 3, color);
-  draw_pixel(x, y + 6, color);
+  if (init_scroll_wheel() == 1) {
+    mouse_has_scroll_wheel = 1;
+  } else {
+    mouse_has_scroll_wheel = 0;
+    mouse_write(0xF4);
+    mouse_read();
+  }
 }
 
 void init_fpu(void) {
@@ -644,7 +763,10 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
         mouse_byte[mouse_cycle] = data;
         mouse_cycle++;
 
-        if (mouse_cycle == 3) {
+        unsigned int expected_packet_size =
+            (mouse_has_scroll_wheel == 1) ? 4 : 3;
+
+        if (mouse_cycle == expected_packet_size) {
           mouse_cycle = 0;
 
           if ((mouse_byte[0] & 0x08) == 0) {
@@ -679,6 +801,43 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
           if (mouse_y >= (int)screen_height)
             mouse_y = screen_height - 1;
 
+          if (mouse_has_scroll_wheel == 1) {
+            signed char scroll_delta = mouse_byte[3] & 0x0F;
+
+            if (mouse_byte[3] & 0x08) {
+              scroll_delta |= 0xF0;
+            }
+
+            if ((scroll_delta > 0 && history_count > 0) || scroll_delta < 0) {
+              restore_mouse_background(mouse_x, mouse_y);
+
+              if (scroll_delta > 0) {
+                int max_possible_scroll = history_count - TERM_ROWS;
+                if (max_possible_scroll < 1) {
+                  max_possible_scroll = history_count;
+                }
+                scroll_offset += (int)scroll_delta;
+                if (scroll_offset > max_possible_scroll) {
+                  scroll_offset = max_possible_scroll;
+                }
+              } else {
+                scroll_offset += (int)scroll_delta;
+                if (scroll_offset < 0) {
+                  scroll_offset = 0;
+                }
+              }
+
+              redraw_terminal();
+              draw_status_bar();
+
+              save_mouse_background(mouse_x, mouse_y);
+              draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
+
+              old_mouse_x = mouse_x;
+              old_mouse_y = mouse_y;
+            }
+          }
+
           if ((mouse_byte[0] & 1) != 0) {
             if (mouse_x >= btn_left && mouse_x <= btn_right &&
                 mouse_y >= btn_top && mouse_y <= btn_bottom) {
@@ -688,6 +847,13 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
             }
           }
 
+          if ((mouse_byte[0] & 2) != 0) {
+            if (start_menu_open) {
+              start_menu_open = 0;
+              draw_start_menu();
+              sleep_ms(150);
+            }
+          }
           save_mouse_background(mouse_x, mouse_y);
           draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
 

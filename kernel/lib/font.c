@@ -81,6 +81,19 @@ unsigned char font_bitmap[256][16] = {
     [0xA9] = {0x3C, 0x42, 0x99, 0xA1, 0xA1, 0x99, 0x42, 0x3C},
     [0xE2] = {0x3C, 0x46, 0x7C, 0x40, 0x7C, 0x46, 0x3C, 0x00}};
 
+void draw_char_opaque(int x, int y, char c, unsigned int color) {
+  for (int i = 0; i < 16; i++) {
+    unsigned char byte = font_bitmap[(unsigned char)c][i];
+    for (int bit = 0; bit < 8; bit++) {
+      if (byte & (0x80 >> bit)) {
+        draw_pixel(x + bit, y + i, color);
+      } else {
+        draw_pixel(x + bit, y + i, 0x00000000);
+      }
+    }
+  }
+}
+
 void draw_char(int x, int y, char c, unsigned int color) {
   for (int i = 0; i < 16; i++) {
     unsigned char byte = font_bitmap[(unsigned char)c][i];

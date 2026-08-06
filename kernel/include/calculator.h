@@ -1,8 +1,6 @@
 #ifndef CALCULATOR_H
 #define CALCULATOR_H
 
-#include <stdint.h>
-
-int calc(const char *input, char *output, uint32_t output_size);
+int calc(const char *input, char *output, unsigned int output_size);
 
 #endif
