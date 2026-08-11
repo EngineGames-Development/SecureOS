@@ -2,22 +2,43 @@
 #include "include/font.h"
 #include "include/io.h"
 #include "include/memory.h"
+#include "include/types.h"
 #include <stdarg.h>
 
-extern unsigned char logo_data[];
+extern u8 logo_data[];
 
 #define NULL ((void *)0)
 #define TERM_ROWS 21
 #define TERM_COLS 72
 
-unsigned int *framebuffer = NULL;
-unsigned int screen_width = 1024;
-unsigned int screen_height = 768;
+#define COLOR_DESKTOP 0x001A1A24
+#define COLOR_PANEL 0x00101014
+#define COLOR_WIN_BG 0x0022222B
+#define COLOR_WIN_TITLE 0x001A1A24
+#define COLOR_WIN_BODY 0x000A0A0F
+#define COLOR_ACCENT 0x00005B9E
+#define COLOR_TEXT 0x00FFFFFF
+#define COLOR_TEXT_MUTED 0x00888888
 
-int term_box_x = 212;
-int term_box_y = 150;
-int term_box_width = 600;
-int term_box_height = 400;
+u32 *framebuffer = NULL;
+u32 screen_width = 1024;
+u32 screen_height = 768;
+
+typedef struct {
+  s16 x, y;
+  u16 width, height;
+} rect_t;
+
+typedef struct {
+  rect_t bounds;
+  u8 active;
+  char title[32];
+} window_t;
+
+static window_t g_terminal_win = {
+    .bounds = {.x = 212, .y = 150, .width = 600, .height = 400},
+    .active = 1,
+    .title = "CONSOLE TERMINAL"};
 
 char terminal_buffer[TERM_ROWS][TERM_COLS];
 int current_row = 0;
@@ -34,14 +55,14 @@ int start_btn_x = 6;
 
 int system_seconds = 0;
 int system_minutes = 0;
-unsigned char last_known_second = 0xFF;
+u8 last_known_second = 0xFF;
 
 int mouse_x = 512;
 int mouse_y = 384;
 int old_mouse_x = 512;
 int old_mouse_y = 384;
-unsigned char mouse_cycle = 0;
-unsigned char mouse_has_scroll_wheel = 0;
+u8 mouse_cycle = 0;
+u8 mouse_has_scroll_wheel = 0;
 char mouse_byte[4];
 #define CURSOR_SIZE 8
 
@@ -61,22 +82,22 @@ extern int strcmp(const char *str1, const char *str2);
 extern void process_command(void);
 
 struct idt_entry {
-  unsigned short low_offset;
-  unsigned short selector;
-  unsigned char zero;
-  unsigned char flags;
-  unsigned short high_offset;
+  u16 low_offset;
+  u16 selector;
+  u16 zero;
+  u8 flags;
+  u16 high_offset;
 } __attribute__((packed));
 
 struct idt_ptr {
-  unsigned short limit;
-  unsigned int base;
+  u16 limit;
+  u32 base;
 } __attribute__((packed));
 
 struct idt_entry idt[32];
 struct idt_ptr idtp;
 
-unsigned char keyboard_map[128] = {
+u8 keyboard_map[128] = {
     0,   27,   '1',  '2', '3',  '4', '5', '6', '7', '8', '9', '0', '-',
     '=', '\b', '\t', 'q', 'w',  'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
     '[', ']',  '\n', 0,   'a',  's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
@@ -88,42 +109,46 @@ unsigned char keyboard_map[128] = {
     0,   0,    0,    0,   0,    0,   0,   0,   0,   0,   0,   0,   0,
     0,   0,    0,    0,   0,    0,   0,   0,   0,   0,   0xA9};
 
-void draw_pixel(unsigned int x, unsigned int y, unsigned int color) {
+void draw_pixel(u32 x, u32 y, u32 color) {
   if (x >= screen_width || y >= screen_height || framebuffer == NULL)
     return;
   framebuffer[y * screen_width + x] = color;
 }
 
-void draw_rect(unsigned int start_x, unsigned int start_y, unsigned int width,
-               unsigned int height, unsigned int color) {
-  for (unsigned int y = start_y; y < start_y + height; y++) {
-    for (unsigned int x = start_x; x < start_x + width; x++) {
+void draw_rect(u32 start_x, u32 start_y, u32 width, u32 height, u32 color) {
+  for (u32 y = start_y; y < start_y + height; y++) {
+    for (u32 x = start_x; x < start_x + width; x++) {
       draw_pixel(x, y, color);
     }
   }
 }
 
-void clear_screen_gui(unsigned int color) {
-  for (unsigned int i = 0; i < screen_width * screen_height; i++) {
+void clear_screen_gui(u32 color) {
+  for (u32 i = 0; i < screen_width * screen_height; i++) {
     framebuffer[i] = color;
   }
 }
 
-void draw_window(int x, int y, int w, int h, const char *title) {
-  draw_rect(x, y, w, h, 0x0022222B);
-  draw_rect(x + 2, y + 2, w - 4, 26, 0x001A1A24);
-  draw_rect(x + 6, y + 34, w - 12, h - 40, 0x000A0A0F);
-  draw_string(x + 12, y + 8, title, 0x00FFFFFF);
+void draw_window(const window_t *win) {
+  s16 x = win->bounds.x;
+  s16 y = win->bounds.y;
+  u16 w = win->bounds.width;
+  u16 h = win->bounds.height;
+
+  draw_rect(x, y, w, h, COLOR_WIN_BG);
+  draw_rect(x + 2, y + 2, w - 4, 26, COLOR_WIN_TITLE);
+  draw_rect(x + 6, y + 34, w - 12, h - 40, COLOR_WIN_BODY);
+  draw_string(x + 12, y + 8, win->title, COLOR_TEXT);
 }
 
 void draw_status_bar(void) {
   while (get_rtc_register(0x0A) & 0x80)
     ;
 
-  unsigned char sec = get_rtc_register(0x00);
-  unsigned char min = get_rtc_register(0x02);
-  unsigned char hour = get_rtc_register(0x04);
-  unsigned char register_b = get_rtc_register(0x0B);
+  u8 sec = get_rtc_register(0x00);
+  u8 min = get_rtc_register(0x02);
+  u8 hour = get_rtc_register(0x04);
+  u8 register_b = get_rtc_register(0x0B);
 
   if (!(register_b & 0x04)) {
     sec = (sec & 0x0F) + ((sec / 16) * 10);
@@ -157,32 +182,36 @@ void draw_status_bar(void) {
 }
 
 void draw_desktop_and_taskbar(void) {
-  clear_screen_gui(0x001A1A24);
+  clear_screen_gui(COLOR_DESKTOP);
 
-  unsigned int taskbar_y = screen_height - taskbar_height;
-  draw_rect(0, taskbar_y, screen_width, taskbar_height, 0x00101014);
+  u32 taskbar_y = screen_height - taskbar_height;
+  draw_rect(0, taskbar_y, screen_width, taskbar_height, COLOR_PANEL);
 
-  unsigned int button_y = taskbar_y + ((taskbar_height - start_btn_height) / 2);
+  u32 button_y = taskbar_y + ((taskbar_height - start_btn_height) / 2);
   draw_rect(start_btn_x, button_y, start_btn_width, start_btn_height,
-            0x00005B9E);
+            COLOR_ACCENT);
 
-  draw_string(start_btn_x + 10, button_y + 6, "START", 0x00FFFFFF);
-  draw_string(20, 20, "SECUREOS NEXT GEN", 0x00005B9E);
+  draw_string(start_btn_x + 10, button_y + 6, "START", COLOR_TEXT);
+  draw_string(20, 20, "SECUREOS NEXT GEN", COLOR_ACCENT);
 
-  draw_window(term_box_x, term_box_y, term_box_width, term_box_height,
-              "CONSOLE TERMINAL");
+  draw_window(&g_terminal_win);
   draw_status_bar();
 }
 
 void redraw_terminal_text(void) {
-  draw_rect(term_box_x + 6, term_box_y + 34, term_box_width - 12,
-            term_box_height - 40, 0x000A0A0F);
+  s16 x = g_terminal_win.bounds.x;
+  s16 y = g_terminal_win.bounds.y;
+  u16 w = g_terminal_win.bounds.width;
+  u16 h = g_terminal_win.bounds.height;
+
+  draw_rect(x + 6, y + 34, w - 12, h - 40, COLOR_WIN_BODY);
+
   for (int r = 0; r < TERM_ROWS; r++) {
     for (int c = 0; c < TERM_COLS; c++) {
       if (terminal_buffer[r][c] == '\0')
         continue;
-      draw_char(term_box_x + 12 + (c * 8), term_box_y + 40 + (r * 16),
-                terminal_buffer[r][c], 0x00FFFFFF);
+      draw_char(x + 12 + (c * 8), y + 40 + (r * 16), terminal_buffer[r][c],
+                COLOR_TEXT);
     }
   }
 }
@@ -285,11 +314,9 @@ void draw_mouse_pointer(int x, int y, unsigned int color) {
 
 void redraw_terminal(void) {
   int term_win_x = 216;
-  int term_win_y = 300;
+  int term_win_y = 328;
   int visible_cols = 70;
   int visible_rows = 22;
-
-  draw_rect(term_win_x, term_win_y, 560, 360, 0x00000000);
 
   for (int r = 0; r < visible_rows; r++) {
     if (r >= TERM_ROWS)
@@ -320,9 +347,7 @@ void redraw_terminal(void) {
       int pixel_x = term_win_x + (c * 8);
       int pixel_y = term_win_y + (r * 16);
 
-      if (pixel_x < (term_win_x + 550) && pixel_y < (term_win_y + 350)) {
-        draw_char(pixel_x, pixel_y, ch, 0x00FFFFFF);
-      }
+      draw_char_opaque(pixel_x, pixel_y, ch, 0x00FFFFFF);
     }
   }
 }
@@ -482,7 +507,7 @@ void exception_divide_by_zero(void) {
 }
 
 void init_idt(void) {
-  unsigned int base = (unsigned int)exception_divide_by_zero;
+  u32 base = (u32)exception_divide_by_zero;
   idt[0].low_offset = base & 0xFFFF;
   idt[0].selector = 0x08;
   idt[0].zero = 0;
@@ -490,7 +515,7 @@ void init_idt(void) {
   idt[0].high_offset = (base >> 16) & 0xFFFF;
 
   idtp.limit = (sizeof(struct idt_entry) * 32) - 1;
-  idtp.base = (unsigned int)&idt;
+  idtp.base = (u32)&idt;
   asm volatile("lidt (%0)" : : "r"(&idtp));
 }
 
@@ -506,23 +531,22 @@ void draw_start_menu(void) {
   int menu_w = 200;
   int menu_h = 250;
   int menu_y = screen_height - 40 - menu_h - 6;
+
   if (start_menu_open) {
-    draw_rect(menu_x, menu_y, menu_w, menu_h, 0x0022222B);
-    draw_rect(menu_x + 2, menu_y + 2, menu_w - 4, menu_h - 4, 0x001A1A24);
+    draw_rect(menu_x, menu_y, menu_w, menu_h, COLOR_WIN_BG);
+    draw_rect(menu_x + 2, menu_y + 2, menu_w - 4, menu_h - 4, COLOR_WIN_TITLE);
 
-    draw_string(menu_x + 15, menu_y + 20, "--- APPS ---", 0x00005B9E);
-    draw_string(menu_x + 15, menu_y + 60, "1. Terminal", 0x00FFFFFF);
-    draw_string(menu_x + 15, menu_y + 90, "2. Settings", 0x00888888);
-    draw_string(menu_x + 15, menu_y + 120, "3. Games", 0x00888888);
+    draw_string(menu_x + 15, menu_y + 20, "--- APPS ---", COLOR_ACCENT);
+    draw_string(menu_x + 15, menu_y + 60, "1. Terminal", COLOR_TEXT);
+    draw_string(menu_x + 15, menu_y + 90, "2. Settings", COLOR_TEXT_MUTED);
+    draw_string(menu_x + 15, menu_y + 120, "3. Games", COLOR_TEXT_MUTED);
 
-    draw_rect(menu_x + 10, menu_y + 160, menu_w - 20, 2, 0x0022222B);
-    draw_string(menu_x + 15, menu_y + 180, "Press ESC to close", 0x00888888);
+    draw_rect(menu_x + 10, menu_y + 160, menu_w - 20, 2, COLOR_WIN_BG);
+    draw_string(menu_x + 15, menu_y + 180, "Press ESC to close",
+                COLOR_TEXT_MUTED);
   } else {
-    draw_rect(menu_x, menu_y, menu_w, menu_h, 0x001A1A24);
-
-    redraw_terminal_text();
-    draw_window(term_box_x, term_box_y, term_box_width, term_box_height,
-                "CONSOLE TERMINAL");
+    draw_rect(menu_x, menu_y, menu_w, menu_h, COLOR_DESKTOP);
+    draw_window(&g_terminal_win);
     redraw_terminal_text();
   }
 }
@@ -548,15 +572,15 @@ void draw_bootscreen_animation(void) {
   int start_x = center_x - (img_w / 2);
   int start_y = center_y - (img_h / 2) - 60;
 
-  unsigned int raw_idx = 0;
+  u32 raw_idx = 0;
 
   for (int y = 0; y < img_h; y++) {
     for (int x = 0; x < img_w; x++) {
-      unsigned char r = logo_data[raw_idx];
-      unsigned char g = logo_data[raw_idx + 1];
-      unsigned char b = logo_data[raw_idx + 2];
+      u8 r = logo_data[raw_idx];
+      u8 g = logo_data[raw_idx + 1];
+      u8 b = logo_data[raw_idx + 2];
 
-      unsigned int color = (r << 16) | (g << 8) | b;
+      u32 color = (r << 16) | (g << 8) | b;
       draw_pixel(start_x + x, start_y + y, color);
 
       raw_idx += 4;
@@ -576,7 +600,7 @@ void draw_bootscreen_animation(void) {
 }
 
 void mouse_wait(unsigned char type) {
-  unsigned int timeout = 100000;
+  u32 timeout = 100000;
   if (type == 0) {
     while (timeout--) {
       if ((char)(inb(0x64) & 1) == 1)
@@ -590,15 +614,15 @@ void mouse_wait(unsigned char type) {
   }
 }
 
-void mouse_write(unsigned char a) {
+void mouse_write(u8 a) {
   mouse_wait(1);
-  asm volatile("outb %0, $0x64" : : "a"((unsigned char)0xD4));
+  asm volatile("outb %0, $0x64" : : "a"((u8)0xD4));
   mouse_wait(1);
   asm volatile("outb %0, $0x60" : : "a"(a));
 }
 
 unsigned char mouse_read(void) {
-  unsigned char data;
+  u8 data;
 
   mouse_wait(0);
 
@@ -608,7 +632,7 @@ unsigned char mouse_read(void) {
 }
 
 int init_scroll_wheel(void) {
-  unsigned char device_id;
+  u8 device_id;
 
   mouse_write(0xF3);
   mouse_read();
@@ -639,18 +663,18 @@ int init_scroll_wheel(void) {
 }
 
 void init_mouse(void) {
-  unsigned char status;
+  u8 status;
 
   mouse_wait(1);
-  asm volatile("outb %0, $0x64" : : "a"((unsigned char)0xA8));
+  asm volatile("outb %0, $0x64" : : "a"((u8)0xA8));
   mouse_wait(1);
-  asm volatile("outb %0, $0x64" : : "a"((unsigned char)0x20));
+  asm volatile("outb %0, $0x64" : : "a"((u8)0x20));
   mouse_wait(0);
   asm volatile("inb $0x60, %0" : "=a"(status));
 
   status |= 2;
   mouse_wait(1);
-  asm volatile("outb %0, $0x64" : : "a"((unsigned char)0x60));
+  asm volatile("outb %0, $0x64" : : "a"((u8)0x60));
   mouse_wait(1);
   asm volatile("outb %0, $0x60" : : "a"(status));
 
@@ -664,13 +688,13 @@ void init_mouse(void) {
 }
 
 void init_fpu(void) {
-  unsigned int cr0;
+  u32 cr0;
   asm volatile("mov %%cr0, %0" : "=r"(cr0));
   cr0 &= ~(1 << 2);
   cr0 |= (1 << 1);
   asm volatile("mov %0, %%cr0" : : "r"(cr0));
 
-  unsigned int cr4;
+  u32 cr4;
   asm volatile("mov %%cr4, %0" : "=r"(cr4));
   cr4 |= (3 << 9);
   asm volatile("mov %0, %%cr4" : : "r"(cr4));
@@ -708,9 +732,9 @@ void restore_mouse_background(int x, int y) {
   }
 }
 
-void start_graphics_terminal(unsigned int *multiboot_info) {
+void start_graphics_terminal(u32 *multiboot_info) {
   (void)multiboot_info;
-  framebuffer = (unsigned int *)0xFD000000;
+  framebuffer = (u32 *)0xFD000000;
   screen_width = 1024;
   screen_height = 768;
 
@@ -723,10 +747,10 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
   init_mouse();
   play_beep(440, 1000);
 
-  unsigned char dummy = 0;
+  u8 dummy = 0;
 
   while (1) {
-    unsigned char status = 0;
+    u8 status = 0;
     asm volatile("inb $0x64, %0" : "=a"(status));
     if (status & 1) {
       asm volatile("inb $0x60, %0" : "=a"(dummy));
@@ -743,28 +767,27 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
 
   draw_status_bar();
   save_mouse_background(mouse_x, mouse_y);
-  draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
+  draw_mouse_pointer(mouse_x, mouse_y, COLOR_TEXT);
 
   while (1) {
-    unsigned char current_sec = get_rtc_register(0x00);
+    u8 current_sec = get_rtc_register(0x00);
     if (current_sec != last_known_second) {
       draw_status_bar();
-      draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
+      draw_mouse_pointer(mouse_x, mouse_y, COLOR_TEXT);
     }
 
-    unsigned char status = 0;
+    u8 status = 0;
     asm volatile("inb $0x64, %0" : "=a"(status));
 
     if (status & 1) {
       if ((status & 0x20) != 0) {
-        unsigned char data = 0;
+        u8 data = 0;
         asm volatile("inb $0x60, %0" : "=a"(data));
 
         mouse_byte[mouse_cycle] = data;
         mouse_cycle++;
 
-        unsigned int expected_packet_size =
-            (mouse_has_scroll_wheel == 1) ? 4 : 3;
+        u32 expected_packet_size = (mouse_has_scroll_wheel == 1) ? 4 : 3;
 
         if (mouse_cycle == expected_packet_size) {
           mouse_cycle = 0;
@@ -778,6 +801,38 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
           int btn_bottom = btn_top + start_btn_height;
           int btn_left = start_btn_x;
           int btn_right = start_btn_x + start_btn_width;
+
+          s8 scroll_delta = 0;
+          if (mouse_has_scroll_wheel == 1) {
+            scroll_delta = mouse_byte[3] & 0x0F;
+            if (mouse_byte[3] & 0x08) {
+              scroll_delta |= 0xF0;
+            }
+          }
+
+          if (scroll_delta != 0) {
+            if (scroll_delta > 0) {
+              int max_possible_scroll = history_count - TERM_ROWS;
+              if (max_possible_scroll < 1) {
+                max_possible_scroll = history_count;
+              }
+              scroll_offset += (int)scroll_delta;
+              if (scroll_offset > max_possible_scroll) {
+                scroll_offset = max_possible_scroll;
+              }
+            } else {
+              scroll_offset += (int)scroll_delta;
+              if (scroll_offset < 0) {
+                scroll_offset = 0;
+              }
+            }
+
+            restore_mouse_background(old_mouse_x, old_mouse_y);
+            redraw_terminal();
+            save_mouse_background(mouse_x, mouse_y);
+            draw_mouse_pointer(mouse_x, mouse_y, COLOR_TEXT);
+            continue;
+          }
 
           restore_mouse_background(old_mouse_x, old_mouse_y);
 
@@ -801,43 +856,6 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
           if (mouse_y >= (int)screen_height)
             mouse_y = screen_height - 1;
 
-          if (mouse_has_scroll_wheel == 1) {
-            signed char scroll_delta = mouse_byte[3] & 0x0F;
-
-            if (mouse_byte[3] & 0x08) {
-              scroll_delta |= 0xF0;
-            }
-
-            if ((scroll_delta > 0 && history_count > 0) || scroll_delta < 0) {
-              restore_mouse_background(mouse_x, mouse_y);
-
-              if (scroll_delta > 0) {
-                int max_possible_scroll = history_count - TERM_ROWS;
-                if (max_possible_scroll < 1) {
-                  max_possible_scroll = history_count;
-                }
-                scroll_offset += (int)scroll_delta;
-                if (scroll_offset > max_possible_scroll) {
-                  scroll_offset = max_possible_scroll;
-                }
-              } else {
-                scroll_offset += (int)scroll_delta;
-                if (scroll_offset < 0) {
-                  scroll_offset = 0;
-                }
-              }
-
-              redraw_terminal();
-              draw_status_bar();
-
-              save_mouse_background(mouse_x, mouse_y);
-              draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
-
-              old_mouse_x = mouse_x;
-              old_mouse_y = mouse_y;
-            }
-          }
-
           if ((mouse_byte[0] & 1) != 0) {
             if (mouse_x >= btn_left && mouse_x <= btn_right &&
                 mouse_y >= btn_top && mouse_y <= btn_bottom) {
@@ -847,21 +865,14 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
             }
           }
 
-          if ((mouse_byte[0] & 2) != 0) {
-            if (start_menu_open) {
-              start_menu_open = 0;
-              draw_start_menu();
-              sleep_ms(150);
-            }
-          }
           save_mouse_background(mouse_x, mouse_y);
-          draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
+          draw_mouse_pointer(mouse_x, mouse_y, COLOR_TEXT);
 
           old_mouse_x = mouse_x;
           old_mouse_y = mouse_y;
         }
       } else {
-        unsigned char scancode = 0;
+        u8 scancode = 0;
         asm volatile("inb $0x60, %0" : "=a"(scancode));
 
         if (scancode == 0xFA || scancode == 0xFE) {
@@ -883,7 +894,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
           if (scancode == 0x01) {
             start_menu_open = !start_menu_open;
             draw_start_menu();
-            draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
+            draw_mouse_pointer(mouse_x, mouse_y, COLOR_TEXT);
             continue;
           }
           char c = keyboard_map[scancode];
@@ -936,7 +947,7 @@ void start_graphics_terminal(unsigned int *multiboot_info) {
               input_buffer[input_length] = c;
               input_length++;
             }
-            draw_mouse_pointer(mouse_x, mouse_y, 0x00FFFFFF);
+            draw_mouse_pointer(mouse_x, mouse_y, COLOR_TEXT);
             sleep_ms(10);
           }
         }
