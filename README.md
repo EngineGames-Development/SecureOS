@@ -4,14 +4,14 @@ A lightweight, hobbyist x86_32 operating system built from scratch. SecureOS foc
 
 ---
 
-## 🚀 Key Features
+## Features
 
 * **Multiboot Compliant:** Boots seamlessly via the GRUB bootloader on x86 architectures.
 * **Custom Splash Screen:** Features direct bitmap graphics support (`logo.bmp`) initialized right at boot time.
 * **Streamlined Build System:** A unified `Makefile` automates compilation, linking, and ISO generation.
 * **Pure Low-Level:** Written strictly in **C**, **x86 Assembly** and Rust with zero external runtime dependencies.
 
-## 🛠️ Tech Stack & Tools
+## Stack and Tools
 
 | Component | Technology | Description |
 | :--- | :--- | :--- |
@@ -22,7 +22,7 @@ A lightweight, hobbyist x86_32 operating system built from scratch. SecureOS foc
 
 ---
 
-## 📁 Repository Structure
+## Structure
 
 ```text
 SecureOS/
@@ -45,8 +45,6 @@ SecureOS/
 ```
 
 ---
-
-## 💻 Getting Started
 
 ### Prerequisites
 
@@ -81,23 +79,23 @@ qemu-system-i386 -cdrom secureos.iso
 
 ---
 
-## 🗺️ Development Roadmap
+## Roadmap
 
 - [x] Set up GRUB and Multiboot headers
 - [x] Implement automated Makefile build system
 - [x] Basic Assembly bootloader entry point
-- [x] Implement Global Descriptor Table (GDT)
 - [x] Implement Interrupt Descriptor Table (IDT) & ISRs
 - [x] Create a basic VGA text-mode driver for screen output
 - [x] Basic Keyboard driver input handling
 - [x] Basic Sound(beep) driver
 - [x] PCI-Scanner
+- [ ] Implement Global Descriptor Table (GDT)
 - [ ] Basic Sata
 - [ ] Coming soon
 
 ---
 
-## 🤝 Contributing
+## Contribution
 
 Contributions make the open-source community an amazing place to learn and create. Since SecureOS is in its early architectural stages, **any help is highly appreciated!**
 
@@ -107,6 +105,6 @@ Contributions make the open-source community an amazing place to learn and creat
 4. **Push** to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a **Pull Request**
 
-## 📄 License
+## License
 
 Distributed under the **MIT License**. See the [`LICENSE`](LICENSE) file in the repository for more information.
