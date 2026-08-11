@@ -16,7 +16,7 @@ A lightweight, hobbyist x86_32 operating system built from scratch. SecureOS foc
 | Component | Technology | Description |
 | :--- | :--- | :--- |
 | **Kernel Logic** | C (GCC Cross-Compiler), Rust(Rustup Toolchain-Manager) | Core operating system logic, drivers, complex logic |
-| **Bootstrapping** | x86 Assembly (NASM) | Entry point, GDT/IDT setup, and CPU control |
+| **Bootstrapping** | x86 Assembly (NASM) | Entry point|
 | **Bootloader** | GNU GRUB | Multiboot-compliant system loading |
 | **Emulation** | QEMU | Fast hardware emulation for testing |
 
