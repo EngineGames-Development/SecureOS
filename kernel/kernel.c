@@ -192,7 +192,7 @@ void draw_desktop_and_taskbar(void) {
             COLOR_ACCENT);
 
   draw_string(start_btn_x + 10, button_y + 6, "START", COLOR_TEXT);
-  draw_string(20, 20, "SECUREOS NEXT GEN", COLOR_ACCENT);
+  draw_string(20, 20, "SECUREOS", COLOR_ACCENT);
 
   draw_window(&g_terminal_win);
   draw_status_bar();
