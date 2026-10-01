@@ -60,7 +60,7 @@ sudo apt install build-essential nasm xorriso qemu-system-x86
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com
+   git clone https://github.com/EngineGames-Development/SecureOS.git
    cd SecureOS
    ```
 
